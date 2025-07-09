@@ -1,12 +1,12 @@
-import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js';
-import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/controls/OrbitControls.js';
-import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/loaders/OBJLoader.js';
-
-const PIN = "2026";
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
 
 window.checkPIN = function () {
   const pin = document.getElementById("pin-input").value;
-  if (pin === PIN) {
+  const correctPIN = "2026";
+
+  if (pin === correctPIN) {
     document.getElementById("login-container").style.display = "none";
     document.getElementById("viewer-container").style.display = "block";
     initViewer();
@@ -18,14 +18,15 @@ window.checkPIN = function () {
 let scene, camera, renderer, controls;
 
 function initViewer() {
+  const canvas = document.getElementById("viewerCanvas");
+  renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+
   scene = new THREE.Scene();
   scene.background = new THREE.Color(0xf0f0f0);
 
-  camera = new THREE.PerspectiveCamera(45, 640 / 480, 0.1, 1000);
+  camera = new THREE.PerspectiveCamera(45, window.innerWidth / window.innerHeight, 0.1, 1000);
   camera.position.set(0, 2, 5);
-
-  renderer = new THREE.WebGLRenderer({ canvas: document.getElementById("glcanvas"), antialias: true });
-  renderer.setSize(640, 480);
 
   controls = new OrbitControls(camera, renderer.domElement);
   controls.enableDamping = true;
@@ -37,11 +38,17 @@ function initViewer() {
 
   const dirLight = new THREE.DirectionalLight(0xffffff);
   dirLight.position.set(3, 10, 10);
-  dirLight.castShadow = true;
   scene.add(dirLight);
 
   animate();
   setupDragAndDrop();
+  window.addEventListener('resize', onWindowResize);
+}
+
+function onWindowResize() {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
 }
 
 function animate() {
@@ -51,41 +58,40 @@ function animate() {
 }
 
 function setupDragAndDrop() {
-  const dropZone = document.getElementById('dropZone');
-  window.addEventListener('dragover', (e) => {
+  const dropZone = document.getElementById("dropZone");
+  window.addEventListener("dragover", (e) => {
     e.preventDefault();
-    dropZone.style.background = 'rgba(0,0,0,0.2)';
+    dropZone.style.pointerEvents = "auto";
   });
-  window.addEventListener('dragleave', (e) => {
-    dropZone.style.background = 'rgba(0,0,0,0.05)';
+  window.addEventListener("dragleave", (e) => {
+    dropZone.style.pointerEvents = "none";
   });
-  window.addEventListener('drop', (e) => {
+  window.addEventListener("drop", (e) => {
     e.preventDefault();
-    dropZone.style.background = 'rgba(0,0,0,0.05)';
-
+    dropZone.style.pointerEvents = "none";
     const file = e.dataTransfer.files[0];
-    if (file && file.name.endsWith('.obj')) {
+    if (file && file.name.endsWith(".obj")) {
       const reader = new FileReader();
-      reader.onload = function(event) {
+      reader.onload = function (event) {
         const contents = event.target.result;
-        loadOBJModel(contents);
+        loadOBJ(contents);
       };
       reader.readAsText(file);
     }
   });
 }
 
-function loadOBJModel(objText) {
+function loadOBJ(objText) {
   const loader = new OBJLoader();
   const object = loader.parse(objText);
 
   // Clear previous models
   for (let i = scene.children.length - 1; i >= 0; i--) {
     const child = scene.children[i];
-    if (child.type === 'Group') scene.remove(child);
+    if (child.type === "Group") scene.remove(child);
   }
 
-  object.traverse(child => {
+  object.traverse((child) => {
     if (child.isMesh) {
       child.material = new THREE.MeshStandardMaterial({ color: 0x6699ff });
       child.geometry.computeVertexNormals();
