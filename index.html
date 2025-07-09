@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Protected Homepage</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div id="login-container">
+    <h2>Enter PIN to Access</h2>
+    <input type="password" id="pin-input" placeholder="Enter PIN" />
+    <button onclick="checkPIN()">Enter</button>
+    <p id="error-message"></p>
+  </div>
+
+  <div id="homepage" style="display: none">
+    <h1>Welcome to the Homepage</h1>
+    <p>This is the protected content of your site.</p>
+  </div>
+
+  <script src="script.js"></script>
+</body>
+</html>
