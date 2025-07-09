@@ -38,7 +38,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Password Protected 3D Viewer</title>
+  <title>Password Protected 3D Viewer Queue</title>
   <script src="https://cdn.jsdelivr.net/npm/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
   <script type="importmap">
     {
@@ -49,61 +49,30 @@
     }
   </script>
   <style>
-    body {
-      margin: 0;
-      font-family: Arial, sans-serif;
-      background-color: #f5f5f5;
-    }
-
+    body { margin: 0; font-family: Arial, sans-serif; background: #f5f5f5; }
     #login-container {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-      background-color: #ffffff;
-      text-align: center;
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100vh; background: #fff; text-align: center;
     }
-
-    #pin-input {
-      padding: 10px;
-      width: 200px;
-      margin: 10px 0;
-      border: 1px solid #ccc;
-      border-radius: 5px;
+    #pin-input, button {
+      padding: 10px; margin: 10px; border-radius: 5px;
     }
-
-    button {
-      padding: 10px 20px;
-      border: none;
-      background-color: #4caf50;
-      color: white;
-      border-radius: 5px;
-      cursor: pointer;
+    #viewer-container { display: none; height: 100vh; position: relative; }
+    #fileInput { position: absolute; top: 10px; left: 10px; z-index: 2; }
+    #modelQueue {
+      position: absolute; top: 10px; right: 10px; z-index: 2;
+      background: rgba(255, 255, 255, 0.9); padding: 10px;
+      border-radius: 4px; max-height: 90vh; overflow-y: auto;
     }
-
-    #error-message {
-      color: red;
-      margin-top: 10px;
+    #controls {
+      position: absolute; bottom: 10px; left: 10px; z-index: 2;
+      background: rgba(255,255,255,0.9); padding: 10px;
+      border-radius: 4px;
     }
-
-    #viewer-container {
-      height: 100vh;
-      display: none;
+    #modelQueue button, #controls button {
+      display: block; margin: 5px 0; width: 100%;
     }
-
-    #fileInput {
-      position: absolute;
-      top: 10px;
-      left: 10px;
-      z-index: 1;
-    }
-
-    canvas {
-      display: block;
-      width: 100vw;
-      height: 100vh;
-    }
+    canvas { display: block; width: 100vw; height: 100vh; }
   </style>
 </head>
 <body>
@@ -111,11 +80,19 @@
     <h2>Enter PIN to Access</h2>
     <input type="password" id="pin-input" placeholder="Enter PIN" />
     <button onclick="checkPIN()">Enter</button>
-    <p id="error-message"></p>
+    <p id="error-message" style="color: red;"></p>
   </div>
 
   <div id="viewer-container">
-    <input type="file" id="fileInput" accept=".obj" />
+    <input type="file" id="fileInput" accept=".obj" multiple />
+    <div id="modelQueue"></div>
+    <div id="controls">
+      <button id="prevBtn">Previous</button>
+      <button id="nextBtn">Next</button>
+      <button onclick="recolorModel('red')">Red</button>
+      <button onclick="recolorModel('green')">Green</button>
+      <button onclick="recolorModel('blue')">Blue</button>
+    </div>
     <canvas id="viewerCanvas"></canvas>
   </div>
 
@@ -126,9 +103,7 @@
 
     window.checkPIN = function () {
       const pin = document.getElementById("pin-input").value;
-      const correctPIN = "2026";
-
-      if (pin === correctPIN) {
+      if (pin === "2026") {
         document.getElementById("login-container").style.display = "none";
         document.getElementById("viewer-container").style.display = "block";
         initViewer();
@@ -138,6 +113,9 @@
     };
 
     let scene, camera, renderer, controls;
+    let models = [];
+    let currentIndex = -1;
+    let currentModel = null;
 
     function initViewer() {
       const canvas = document.getElementById("viewerCanvas");
@@ -152,21 +130,87 @@
 
       controls = new OrbitControls(camera, renderer.domElement);
       controls.enableDamping = true;
-      controls.dampingFactor = 0.05;
 
-      const hemiLight = new THREE.HemisphereLight(0xffffff, 0x444444);
-      hemiLight.position.set(0, 20, 0);
-      scene.add(hemiLight);
-
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x444444));
       const dirLight = new THREE.DirectionalLight(0xffffff);
       dirLight.position.set(3, 10, 10);
       scene.add(dirLight);
 
       document.getElementById("fileInput").addEventListener("change", handleFileUpload);
+      document.getElementById("nextBtn").addEventListener("click", nextModel);
+      document.getElementById("prevBtn").addEventListener("click", prevModel);
 
+      window.addEventListener("resize", onWindowResize);
       animate();
-      window.addEventListener('resize', onWindowResize);
     }
+
+    function handleFileUpload(event) {
+      const files = Array.from(event.target.files);
+      files.forEach(file => {
+        if (file.name.endsWith(".obj")) {
+          const reader = new FileReader();
+          reader.onload = function (e) {
+            models.push({ name: file.name, content: e.target.result });
+            addToQueue(file.name);
+            if (models.length === 1) {
+              currentIndex = 0;
+              loadOBJ(models[0].content);
+            }
+          };
+          reader.readAsText(file);
+        }
+      });
+    }
+
+    function addToQueue(name) {
+      const btn = document.createElement("button");
+      btn.textContent = name;
+      btn.onclick = () => {
+        const model = models.find(m => m.name === name);
+        currentIndex = models.indexOf(model);
+        loadOBJ(model.content);
+      };
+      document.getElementById("modelQueue").appendChild(btn);
+    }
+
+    function nextModel() {
+      if (models.length === 0) return;
+      currentIndex = (currentIndex + 1) % models.length;
+      loadOBJ(models[currentIndex].content);
+    }
+
+    function prevModel() {
+      if (models.length === 0) return;
+      currentIndex = (currentIndex - 1 + models.length) % models.length;
+      loadOBJ(models[currentIndex].content);
+    }
+
+    function loadOBJ(objText) {
+      const loader = new OBJLoader();
+      const object = loader.parse(objText);
+
+      if (currentModel) scene.remove(currentModel);
+
+      object.traverse(child => {
+        if (child.isMesh) {
+          child.material = new THREE.MeshStandardMaterial({ color: 0x6699ff });
+          child.geometry.computeVertexNormals();
+        }
+      });
+
+      currentModel = object;
+      scene.add(currentModel);
+    }
+
+    window.recolorModel = function (color) {
+      if (!currentModel) return;
+      const hex = color === 'red' ? 0xff0000 : color === 'green' ? 0x00ff00 : 0x0000ff;
+      currentModel.traverse(child => {
+        if (child.isMesh) {
+          child.material.color.setHex(hex);
+        }
+      });
+    };
 
     function onWindowResize() {
       camera.aspect = window.innerWidth / window.innerHeight;
@@ -179,40 +223,6 @@
       controls.update();
       renderer.render(scene, camera);
     }
-
-    function handleFileUpload(event) {
-      const file = event.target.files[0];
-      if (file && file.name.endsWith(".obj")) {
-        const reader = new FileReader();
-        reader.onload = function (e) {
-          const contents = e.target.result;
-          loadOBJ(contents);
-        };
-        reader.readAsText(file);
-      }
-    }
-
-    function loadOBJ(objText) {
-      const loader = new OBJLoader();
-      const object = loader.parse(objText);
-
-      // Clear previous models
-      for (let i = scene.children.length - 1; i >= 0; i--) {
-        const child = scene.children[i];
-        if (child.type === "Group") scene.remove(child);
-      }
-
-      object.traverse((child) => {
-        if (child.isMesh) {
-          child.material = new THREE.MeshStandardMaterial({ color: 0x6699ff });
-          child.geometry.computeVertexNormals();
-        }
-      });
-
-      object.position.set(0, 0, 0);
-      scene.add(object);
-    }
   </script>
 </body>
 </html>
-
