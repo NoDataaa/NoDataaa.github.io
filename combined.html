@@ -3,72 +3,164 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Protected Homepage</title>
+  <title>3D OBJ Model Viewer</title>
   <style>
     body {
       font-family: Arial, sans-serif;
       text-align: center;
-      padding: 50px;
       background-color: #f5f5f5;
+      margin: 0;
+      padding: 20px;
     }
-
-    #login-container, #homepage {
-      max-width: 400px;
-      margin: auto;
-      background: white;
-      padding: 30px;
-      border-radius: 8px;
-      box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    }
-
-    input[type=password] {
-      padding: 10px;
-      width: 100%;
-      margin-bottom: 15px;
+    canvas {
+      display: block;
+      margin: 20px auto;
+      background: #fff;
       border: 1px solid #ccc;
-      border-radius: 4px;
     }
-
-    button {
-      padding: 10px 20px;
-      cursor: pointer;
-      background-color: #4caf50;
-      color: white;
-      border: none;
-      border-radius: 4px;
-    }
-
-    #error-message {
-      color: red;
-      margin-top: 10px;
+    #controls {
+      margin-top: 20px;
     }
   </style>
 </head>
 <body>
-  <div id="login-container">
-    <h2>Enter PIN to Access</h2>
-    <input type="password" id="pin-input" placeholder="Enter PIN" />
-    <button onclick="checkPIN()">Enter</button>
-    <p id="error-message"></p>
+  <h2>3D OBJ Model Viewer</h2>
+  <input type="file" id="objFileInput" accept=".obj" />
+  <canvas id="glcanvas" width="640" height="480"></canvas>
+  <div id="controls">
+    <label for="rotationSlider">Rotate:</label>
+    <input type="range" id="rotationSlider" min="0" max="360" value="0" />
   </div>
 
-  <div id="homepage" style="display: none">
-    <h1>Welcome to the Homepage</h1>
-    <p>This is the protected content of your site.</p>
-  </div>
-
+  <script src="https://cdn.jsdelivr.net/npm/gl-matrix@2.8.1/dist/gl-matrix-min.js"></script>
   <script>
-    function checkPIN() {
-      const pin = document.getElementById("pin-input").value;
-      const correctPIN = "2026";
+    const canvas = document.getElementById("glcanvas");
+    const gl = canvas.getContext("webgl");
 
-      if (pin === correctPIN) {
-        document.getElementById("login-container").style.display = "none";
-        document.getElementById("homepage").style.display = "block";
-      } else {
-        document.getElementById("error-message").innerText = "Incorrect PIN. Try again.";
-      }
+    if (!gl) {
+      alert("Unable to initialize WebGL. Your browser or machine may not support it.");
     }
+
+    let modelVertices = [];
+    let vertexBuffer;
+
+    function parseOBJ(text) {
+      const lines = text.split('\n');
+      const positions = [];
+      const vertices = [];
+
+      for (const line of lines) {
+        const parts = line.trim().split(/\s+/);
+        if (parts[0] === 'v') {
+          positions.push([parseFloat(parts[1]), parseFloat(parts[2]), parseFloat(parts[3])]);
+        } else if (parts[0] === 'f') {
+          for (let i = 1; i <= 3; i++) {
+            const idx = parts[i].split('/')[0] - 1;
+            vertices.push(...positions[idx]);
+          }
+        }
+      }
+
+      return new Float32Array(vertices);
+    }
+
+    function setupBuffers(vertices) {
+      vertexBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+    }
+
+    const vsSource = `
+      attribute vec3 aVertexPosition;
+      uniform mat4 uModelViewMatrix;
+      uniform mat4 uProjectionMatrix;
+      void main(void) {
+        gl_Position = uProjectionMatrix * uModelViewMatrix * vec4(aVertexPosition, 1.0);
+      }
+    `;
+
+    const fsSource = `
+      void main(void) {
+        gl_FragColor = vec4(0.2, 0.6, 0.8, 1.0);
+      }
+    `;
+
+    function loadShader(type, source) {
+      const shader = gl.createShader(type);
+      gl.shaderSource(shader, source);
+      gl.compileShader(shader);
+      if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+        alert("Shader error: " + gl.getShaderInfoLog(shader));
+        gl.deleteShader(shader);
+        return null;
+      }
+      return shader;
+    }
+
+    const vertexShader = loadShader(gl.VERTEX_SHADER, vsSource);
+    const fragmentShader = loadShader(gl.FRAGMENT_SHADER, fsSource);
+    const shaderProgram = gl.createProgram();
+    gl.attachShader(shaderProgram, vertexShader);
+    gl.attachShader(shaderProgram, fragmentShader);
+    gl.linkProgram(shaderProgram);
+
+    if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
+      alert("Unable to initialize the shader program: " + gl.getProgramInfoLog(shaderProgram));
+    }
+
+    const programInfo = {
+      program: shaderProgram,
+      attribLocations: {
+        vertexPosition: gl.getAttribLocation(shaderProgram, "aVertexPosition"),
+      },
+      uniformLocations: {
+        projectionMatrix: gl.getUniformLocation(shaderProgram, "uProjectionMatrix"),
+        modelViewMatrix: gl.getUniformLocation(shaderProgram, "uModelViewMatrix"),
+      },
+    };
+
+    function drawScene(rotation) {
+      if (!vertexBuffer) return;
+
+      gl.clearColor(0.95, 0.95, 0.95, 1.0);
+      gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
+
+      const projectionMatrix = mat4.create();
+      mat4.perspective(projectionMatrix, 45 * Math.PI / 180, canvas.width / canvas.height, 0.1, 100.0);
+
+      const modelViewMatrix = mat4.create();
+      mat4.translate(modelViewMatrix, modelViewMatrix, [0.0, 0.0, -6.0]);
+      mat4.rotateY(modelViewMatrix, modelViewMatrix, rotation);
+
+      gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+      gl.vertexAttribPointer(programInfo.attribLocations.vertexPosition, 3, gl.FLOAT, false, 0, 0);
+      gl.enableVertexAttribArray(programInfo.attribLocations.vertexPosition);
+
+      gl.useProgram(programInfo.program);
+      gl.uniformMatrix4fv(programInfo.uniformLocations.projectionMatrix, false, projectionMatrix);
+      gl.uniformMatrix4fv(programInfo.uniformLocations.modelViewMatrix, false, modelViewMatrix);
+
+      const vertexCount = modelVertices.length / 3;
+      gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
+    }
+
+    document.getElementById("rotationSlider").addEventListener("input", function () {
+      const angle = parseFloat(this.value) * Math.PI / 180;
+      drawScene(angle);
+    });
+
+    document.getElementById("objFileInput").addEventListener("change", function (event) {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function (e) {
+          modelVertices = parseOBJ(e.target.result);
+          setupBuffers(modelVertices);
+          drawScene(0);
+        };
+        reader.readAsText(file);
+      }
+    });
   </script>
 </body>
 </html>
