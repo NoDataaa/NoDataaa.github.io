@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Debug 3D OBJ+MTL Viewer</title>
+  <script src="https://cdn.jsdelivr.net/npm/es-module-shims@1.6.3/dist/es-module-shims.js"></script>
+  <script type="importmap">
+    {
+      "imports": {
+        "three": "https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js",
+        "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/"
+      }
+    }
+  </script>
+  <style>
+    body { margin: 0; overflow: hidden; font-family: sans-serif; background: #202020; color: white; }
+    #dropZone {
+      position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(255,255,255,0.1); z-index: 10; display: flex;
+      align-items: center; justify-content: center; font-size: 24px; pointer-events: none;
+    }
+    #log { position: absolute; bottom: 0; left: 0; background: rgba(0,0,0,0.8); color: #0f0; padding: 5px; font-size: 12px; max-height: 100px; overflow-y: auto; width: 100%; }
+  </style>
+</head>
+<body>
+  <div id="dropZone" style="display: none">Drop OBJ and MTL Files Here</div>
+  <div id="log"></div>
+  <script type="module">
+    import * as THREE from 'three';
+    import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+    import { OBJLoader } from 'three/addons/loaders/OBJLoader.js';
+    import { MTLLoader } from 'three/addons/loaders/MTLLoader.js';
+
+    const log = document.getElementById('log');
+    const logMsg = msg => log.innerText += `\n${msg}`;
+
+    let scene, camera, renderer, controls;
+    const dropZone = document.getElementById('dropZone');
+
+    try {
+      init();
+    } catch (e) {
+      logMsg('Initialization Error: ' + e);
+    }
+
+    function init() {
+      logMsg('Initializing scene...');
+      scene = new THREE.Scene();
+      scene.background = new THREE.Color(0x222222);
+
+      camera = new THREE.PerspectiveCamera(60, window.innerWidth/window.innerHeight, 0.1, 1000);
+      camera.position.set(0, 2, 5);
+
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      document.body.appendChild(renderer.domElement);
+
+      controls = new OrbitControls(camera, renderer.domElement);
+      controls.enableDamping = true;
+
+      scene.add(new THREE.HemisphereLight(0xffffff, 0x444444));
+      const dirLight = new THREE.DirectionalLight(0xffffff);
+      dirLight.position.set(5, 10, 7.5);
+      scene.add(dirLight);
+
+      window.addEventListener('resize', onWindowResize);
+      setupDragAndDrop();
+      animate();
+      logMsg('Scene initialized.');
+    }
+
+    function onWindowResize() {
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+      renderer.setSize(window.innerWidth, window.innerHeight);
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    function setupDragAndDrop() {
+      let files = {};
+
+      window.addEventListener('dragover', e => {
+        e.preventDefault();
+        dropZone.style.display = 'flex';
+      });
+
+      window.addEventListener('dragleave', e => {
+        dropZone.style.display = 'none';
+      });
+
+      window.addEventListener('drop', e => {
+        e.preventDefault();
+        dropZone.style.display = 'none';
+
+        files = {};
+        for (const file of e.dataTransfer.files) {
+          files[file.name.toLowerCase()] = file;
+        }
+
+        if (files['model.obj']) {
+          const manager = new THREE.LoadingManager();
+
+          manager.setURLModifier(url => {
+            const lowerUrl = url.toLowerCase();
+            if (files[lowerUrl]) {
+              const blob = new Blob([files[lowerUrl]], { type: 'text/plain' });
+              const objectURL = URL.createObjectURL(blob);
+              logMsg(`Loaded: ${lowerUrl}`);
+              return objectURL;
+            }
+            return url;
+          });
+
+          if (files['model.mtl']) {
+            const mtlLoader = new MTLLoader(manager);
+            mtlLoader.load(URL.createObjectURL(files['model.mtl']), materials => {
+              materials.preload();
+              const objLoader = new OBJLoader(manager);
+              objLoader.setMaterials(materials);
+              objLoader.load(URL.createObjectURL(files['model.obj']), obj => {
+                clearScene();
+                scene.add(obj);
+                logMsg('OBJ + MTL loaded and added to scene.');
+              }, undefined, err => logMsg('OBJ load error: ' + err));
+            }, undefined, err => logMsg('MTL load error: ' + err));
+          } else {
+            const objLoader = new OBJLoader(manager);
+            objLoader.load(URL.createObjectURL(files['model.obj']), obj => {
+              clearScene();
+              scene.add(obj);
+              logMsg('OBJ loaded (no MTL) and added to scene.');
+            }, undefined, err => logMsg('OBJ load error: ' + err));
+          }
+        } else {
+          logMsg("Missing model.obj file");
+        }
+      });
+    }
+
+    function clearScene() {
+      for (let i = scene.children.length - 1; i >= 0; i--) {
+        const child = scene.children[i];
+        if (child.type === 'Group') scene.remove(child);
+      }
+      logMsg('Scene cleared of previous model.');
+    }
+  </script>
+</body>
+</html>

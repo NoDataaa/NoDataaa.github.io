@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Enhanced 3D OBJ Viewer</title>
+  <title>3D OBJ+MTL Viewer</title>
   <style>
     body { margin: 0; overflow: hidden; font-family: sans-serif; }
     #dropZone {
@@ -15,13 +15,15 @@
   </style>
 </head>
 <body>
-  <div id="dropZone" style="display: none">Drop OBJ File Here</div>
+  <div id="dropZone" style="display: none">Drop OBJ and MTL Files Here</div>
   <script type="module">
     import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.162.0/build/three.module.js';
     import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/controls/OrbitControls.js';
     import { OBJLoader } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/loaders/OBJLoader.js';
+    import { MTLLoader } from 'https://cdn.jsdelivr.net/npm/three@0.162.0/examples/jsm/loaders/MTLLoader.js';
 
     let scene, camera, renderer, controls;
+    let dropZone = document.getElementById('dropZone');
 
     init();
 
@@ -50,7 +52,6 @@
       scene.add(dirLight);
 
       animate();
-
       window.addEventListener('resize', onWindowResize);
       setupDragAndDrop();
     }
@@ -68,49 +69,67 @@
     }
 
     function setupDragAndDrop() {
-      const dropZone = document.getElementById('dropZone');
-      window.addEventListener('dragover', (e) => {
+      let files = {};
+
+      window.addEventListener('dragover', e => {
         e.preventDefault();
         dropZone.style.display = 'flex';
       });
-      window.addEventListener('dragleave', (e) => {
+
+      window.addEventListener('dragleave', e => {
         dropZone.style.display = 'none';
       });
-      window.addEventListener('drop', (e) => {
+
+      window.addEventListener('drop', e => {
         e.preventDefault();
         dropZone.style.display = 'none';
 
-        const file = e.dataTransfer.files[0];
-        if (file && file.name.endsWith('.obj')) {
-          const reader = new FileReader();
-          reader.onload = function(event) {
-            const contents = event.target.result;
-            loadOBJModel(contents);
-          };
-          reader.readAsText(file);
+        files = {};
+        for (const file of e.dataTransfer.files) {
+          files[file.name.toLowerCase()] = file;
+        }
+
+        if (files['model.obj']) {
+          const manager = new THREE.LoadingManager();
+
+          manager.setURLModifier((url) => {
+            const lowerUrl = url.toLowerCase();
+            if (files[lowerUrl]) {
+              const blob = new Blob([files[lowerUrl]], { type: 'text/plain' });
+              return URL.createObjectURL(blob);
+            }
+            return url;
+          });
+
+          if (files['model.mtl']) {
+            const mtlLoader = new MTLLoader(manager);
+            mtlLoader.load(URL.createObjectURL(files['model.mtl']), materials => {
+              materials.preload();
+              const objLoader = new OBJLoader(manager);
+              objLoader.setMaterials(materials);
+              objLoader.load(URL.createObjectURL(files['model.obj']), object => {
+                clearScene();
+                scene.add(object);
+              });
+            });
+          } else {
+            const objLoader = new OBJLoader(manager);
+            objLoader.load(URL.createObjectURL(files['model.obj']), object => {
+              clearScene();
+              scene.add(object);
+            });
+          }
+        } else {
+          alert("Please make sure to drop 'model.obj' (and optionally 'model.mtl')");
         }
       });
     }
 
-    function loadOBJModel(objText) {
-      const loader = new OBJLoader();
-      const object = loader.parse(objText);
-
-      // Clear previous models
+    function clearScene() {
       for (let i = scene.children.length - 1; i >= 0; i--) {
         const child = scene.children[i];
         if (child.type === 'Group') scene.remove(child);
       }
-
-      object.traverse(child => {
-        if (child.isMesh) {
-          child.material = new THREE.MeshStandardMaterial({ color: 0x6699ff });
-          child.geometry.computeVertexNormals();
-        }
-      });
-
-      object.position.set(0, 0, 0);
-      scene.add(object);
     }
   </script>
 </body>
