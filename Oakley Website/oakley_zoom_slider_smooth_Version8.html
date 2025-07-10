@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Oakley O - Zoom Through (Extra Smooth)</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f2f2f2; }
+    .logo-container { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 1; }
+    #oakleyO { will-change: transform; transform-origin: 50% 50%; display: block; }
+    .spacer { height: 7000px; }
+    .controls {
+      position: fixed;
+      bottom: 30px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 10;
+      background: rgba(255,255,255,0.85);
+      padding: 12px 24px;
+      border-radius: 8px;
+      box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+      font-family: sans-serif;
+      font-size: 1rem;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      pointer-events: auto;
+      user-select: none;
+    }
+    .controls label { font-weight: bold; margin-right: 6px; }
+    .controls input[type=range] {
+      accent-color: #222;
+      width: 200px;
+      vertical-align: middle;
+    }
+    .controls span {
+      min-width: 2em;
+      display: inline-block;
+      text-align: center;
+      font-variant-numeric: tabular-nums;
+    }
+  </style>
+</head>
+<body>
+  <div class="logo-container">
+    <svg id="oakleyO" viewBox="0 0 400 200" width="400" height="200">
+      <ellipse cx="200" cy="100" rx="180" ry="80" fill="#000"/>
+      <ellipse cx="200" cy="100" rx="110" ry="50" fill="#fff"/>
+    </svg>
+  </div>
+  <div class="controls">
+    <label for="scrollSpeed">Zoom Speed:</label>
+    <input type="range" id="scrollSpeed" min="1000" max="10000" step="100" value="5000">
+    <span id="speedValue">5000</span>
+    <span>scroll px</span>
+  </div>
+  <div class="spacer"></div>
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      const svg = document.getElementById('oakleyO');
+      const speedSlider = document.getElementById('scrollSpeed');
+      const speedValue = document.getElementById('speedValue');
+      const minScale = 1;
+      const maxScale = 300;
+      const scrollStart = 0;
+      let scrollEnd = parseInt(speedSlider.value, 10);
+      let currentScale = minScale;
+      let targetScale = minScale;
+      const easing = 0.08; // smaller = smoother (0.08 is very smooth, 0.2 is snappier)
+
+      function updateTargetScale() {
+        const scrollY = window.scrollY;
+        let progress = (scrollY - scrollStart) / (scrollEnd - scrollStart);
+        progress = Math.max(0, Math.min(progress, 1));
+        targetScale = minScale + (maxScale - minScale) * progress;
+      }
+
+      function animate() {
+        // Smoothly interpolate currentScale toward targetScale
+        currentScale += (targetScale - currentScale) * easing;
+        if (Math.abs(currentScale - targetScale) < 0.001) currentScale = targetScale;
+        svg.style.transform = `scale(${currentScale})`;
+        requestAnimationFrame(animate);
+      }
+
+      function updateSpeed() {
+        scrollEnd = parseInt(speedSlider.value, 10);
+        speedValue.textContent = scrollEnd;
+        updateTargetScale();
+      }
+
+      window.addEventListener('scroll', updateTargetScale);
+      window.addEventListener('resize', updateTargetScale);
+      speedSlider.addEventListener('input', updateSpeed);
+
+      // Initialize display and animation
+      updateSpeed();
+      animate();
+    });
+  </script>
+</body>
+</html>

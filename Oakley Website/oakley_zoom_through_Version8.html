@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Oakley O - Zoom Through</title>
+  <style>
+    html, body { margin: 0; padding: 0; height: 100%; background: #f2f2f2; }
+    .logo-container { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; z-index: 1; }
+    #oakleyO { transition: transform 0.5s cubic-bezier(0.4,0,0.2,1); will-change: transform; transform-origin: 50% 50%; display: block; }
+    .spacer { height: 3000px; }
+  </style>
+</head>
+<body>
+  <div class="logo-container">
+    <svg id="oakleyO" viewBox="0 0 400 200" width="400" height="200">
+      <ellipse cx="200" cy="100" rx="180" ry="80" fill="#000"/>
+      <ellipse cx="200" cy="100" rx="110" ry="50" fill="#fff"/>
+    </svg>
+  </div>
+  <div class="spacer"></div>
+  <script>
+    window.addEventListener('DOMContentLoaded', function() {
+      const svg = document.getElementById('oakleyO');
+      const minScale = 1;
+      const maxScale = 300; // Try 300 or even more for a true "fly through"
+      const scrollStart = 0;
+      const scrollEnd = 1000; // Change this for how fast it zooms
+
+      function updateZoom() {
+        const scrollY = window.scrollY;
+        let progress = (scrollY - scrollStart) / (scrollEnd - scrollStart);
+        progress = Math.max(0, Math.min(progress, 1));
+        const scale = minScale + (maxScale - minScale) * progress;
+        svg.style.transform = `scale(${scale})`;
+      }
+      window.addEventListener('scroll', updateZoom);
+      window.addEventListener('resize', updateZoom);
+      updateZoom();
+    });
+  </script>
+</body>
+</html>
