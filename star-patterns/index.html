@@ -1,0 +1,1825 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Laser Cut Pattern Generator</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+  <style>
+    @font-face {
+      font-family: 'Technology';
+      src: url('Technology.ttf') format('truetype');
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: 'Inter', sans-serif;
+      background: #0a0a0f;
+      color: #e0e0e0;
+      min-height: 100vh;
+      display: flex;
+    }
+    .sidebar {
+      width: 300px;
+      min-width: 300px;
+      background: #12121a;
+      border-right: 1px solid #2a2a3a;
+      padding: 20px;
+      overflow-y: auto;
+      height: 100vh;
+    }
+    .sidebar h1 { font-size: 1.2rem; font-weight: 600; color: #fff; margin-bottom: 2px; }
+    .sidebar .subtitle { font-size: 0.7rem; color: #666; margin-bottom: 20px; }
+    .control-group { margin-bottom: 16px; }
+    .control-group h3 {
+      font-size: 0.65rem;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      color: #888;
+      margin-bottom: 8px;
+    }
+    .control { margin-bottom: 10px; }
+    .control label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.78rem;
+      margin-bottom: 3px;
+      color: #aaa;
+    }
+    .control label span { color: #fff; cursor: text; }
+    .control label span:hover { text-decoration: underline; }
+    .val-edit {
+      width: 50px; background: #333; color: #fff; border: 1px solid #7c5cfc;
+      border-radius: 3px; font-size: 0.78rem; text-align: right; padding: 0 3px;
+      outline: none;
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      width: 100%; height: 4px;
+      background: #2a2a3a;
+      border-radius: 2px;
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: #7c6ef0;
+      cursor: pointer;
+    }
+    input[type="range"]::-moz-range-thumb {
+      width: 14px; height: 14px;
+      border-radius: 50%;
+      background: #7c6ef0;
+      cursor: pointer;
+      border: none;
+    }
+    select {
+      width: 100%;
+      padding: 6px 8px;
+      background: #1a1a2a;
+      border: 1px solid #2a2a3a;
+      border-radius: 4px;
+      color: #e0e0e0;
+      font-size: 0.78rem;
+      font-family: inherit;
+    }
+    .checkbox-row {
+      display: flex; align-items: center; gap: 8px; margin-bottom: 6px;
+    }
+    .checkbox-row input[type="checkbox"] { accent-color: #7c6ef0; }
+    .checkbox-row label { font-size: 0.78rem; color: #aaa; }
+    .btn-row { display: flex; gap: 8px; margin-top: 14px; }
+    button {
+      flex: 1;
+      padding: 10px 12px;
+      border: none;
+      border-radius: 6px;
+      font-family: inherit;
+      font-size: 0.78rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .btn-primary { background: #7c6ef0; color: #fff; }
+    .btn-primary:hover { background: #6b5ce0; }
+    .btn-secondary { background: #2a2a3a; color: #ccc; }
+    .btn-secondary:hover { background: #3a3a4a; }
+    .canvas-area {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 24px;
+      overflow: hidden;
+    }
+    canvas {
+      border-radius: 6px;
+      box-shadow: 0 0 40px rgba(124, 110, 240, 0.06);
+      background: #fff;
+    }
+    .divider { height: 1px; background: #2a2a3a; margin: 12px 0; }
+    .info {
+      font-size: 0.68rem;
+      color: #555;
+      margin-top: 12px;
+      line-height: 1.5;
+    }
+    .size-inputs {
+      display: flex; gap: 8px; align-items: center;
+      margin-bottom: 10px;
+    }
+    .size-inputs input[type="number"] {
+      width: 70px;
+      padding: 4px 6px;
+      background: #1a1a2a;
+      border: 1px solid #2a2a3a;
+      border-radius: 4px;
+      color: #e0e0e0;
+      font-size: 0.78rem;
+      font-family: inherit;
+    }
+    .size-inputs span { font-size: 0.78rem; color: #666; }
+    .optgroup-label { font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="sidebar">
+    <h1>Laser Cut Patterns</h1>
+    <p class="subtitle">Geometric patterns for fabric cutting</p>
+
+    <div class="control-group">
+      <h3>Canvas (inches)</h3>
+      <div class="size-inputs">
+        <input type="number" id="canvasW" value="8" min="1" max="48" step="0.25">
+        <span>&times;</span>
+        <input type="number" id="canvasH" value="8" min="1" max="48" step="0.25">
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="control-group">
+      <h3>Pattern</h3>
+      <div class="control">
+        <label>Type</label>
+        <select id="patternType">
+          <optgroup label="Geometric">
+            <option value="diamonds">Diamonds</option>
+            <option value="circles">Circles</option>
+            <option value="hexagons">Hexagons</option>
+            <option value="stars">Stars</option>
+            <option value="scales">Scales / Arcs</option>
+            <option value="slits">Flex Slits</option>
+            <option value="crosses">Crosses</option>
+            <option value="petals">Petals</option>
+          </optgroup>
+          <optgroup label="Organic / Futuristic">
+            <option value="voronoi">Voronoi</option>
+            <option value="waves">Flow Waves</option>
+            <option value="teardrops">Teardrops</option>
+            <option value="crescents">Crescents</option>
+            <option value="dna">DNA Helix</option>
+            <option value="dragonscales">Dragon Scales</option>
+            <option value="channels">Geometric Channels</option>
+            <option value="matrix">Matrix Binary</option>
+            <option value="circuit">Circuit Lines</option>
+            <option value="fissure">Fissure</option>
+          </optgroup>
+        </select>
+      </div>
+      <div class="control">
+        <label>Cell Size <span id="v-cellSize">0.50</span>"</label>
+        <input type="range" id="cellSize" min="0.15" max="1.5" value="0.5" step="0.01">
+      </div>
+      <div class="control">
+        <label>Cut Size <span id="v-cutRatio">65</span>%</label>
+        <input type="range" id="cutRatio" min="20" max="90" value="65" step="1">
+      </div>
+      <div class="control">
+        <label>Rotation <span id="v-rotation">0</span>&deg;</label>
+        <input type="range" id="rotation" min="0" max="90" value="0" step="5">
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="control-group">
+      <h3>Shape Options</h3>
+      <div class="control" id="pointsControl">
+        <label>Star Points <span id="v-starPoints">5</span></label>
+        <input type="range" id="starPoints" min="3" max="12" value="5" step="1">
+      </div>
+      <div class="control" id="cornerControl">
+        <label>Corner Radius <span id="v-cornerR">0</span>%</label>
+        <input type="range" id="cornerR" min="0" max="80" value="0" step="1">
+      </div>
+      <div class="control" id="organicControl">
+        <label>Organic Feel <span id="v-organic">50</span>%</label>
+        <input type="range" id="organic" min="0" max="100" value="50" step="1">
+      </div>
+      <div id="voronoiControls" style="display:none">
+        <div class="control">
+          <label>Smoothing <span id="v-vSmooth">50</span>%</label>
+          <input type="range" id="vSmooth" min="0" max="100" value="50" step="1">
+        </div>
+        <div class="control">
+          <label>Noise <span id="v-vNoise">30</span>%</label>
+          <input type="range" id="vNoise" min="0" max="100" value="30" step="1">
+        </div>
+        <div class="control">
+          <label>Elongation <span id="v-vElongation">0</span>%</label>
+          <input type="range" id="vElongation" min="0" max="100" value="0" step="1">
+        </div>
+        <div class="control">
+          <label>Flow Angle <span id="v-vFlowAngle">0</span>&deg;</label>
+          <input type="range" id="vFlowAngle" min="0" max="180" value="0" step="5">
+        </div>
+        <div class="control" style="display:flex;align-items:center;gap:8px">
+          <label>Seed</label>
+          <input type="number" id="vSeed" value="1" min="1" max="99999" step="1" style="width:80px">
+          <span id="v-vSeed" style="display:none">1</span>
+          <button id="btnRandomSeed" style="padding:4px 10px;border-radius:4px;border:1px solid #555;background:#333;color:#fff;cursor:pointer">Randomize</button>
+        </div>
+      </div>
+      <div id="matrixControls" style="display:none">
+        <div class="control">
+          <label>Digit Mode</label>
+          <select id="mMode">
+            <option value="random">Random</option>
+            <option value="zeros">0s Only</option>
+            <option value="ones">1s Only</option>
+            <option value="alternating">Alternating 10101</option>
+          </select>
+        </div>
+        <div class="control">
+          <label>Segment Gap <span id="v-mGap">50</span>%</label>
+          <input type="range" id="mGap" min="0" max="100" value="50" step="1">
+        </div>
+        <div class="control">
+          <label>H Spacing <span id="v-mSpaceX">0</span>%</label>
+          <input type="range" id="mSpaceX" min="0" max="100" value="0" step="1">
+        </div>
+        <div class="control">
+          <label>V Spacing <span id="v-mSpaceY">0</span>%</label>
+          <input type="range" id="mSpaceY" min="0" max="100" value="0" step="1">
+        </div>
+        <div class="control">
+          <label>H Offset <span id="v-mOffX">0</span>%</label>
+          <input type="range" id="mOffX" min="-100" max="100" value="0" step="1">
+        </div>
+        <div class="control">
+          <label>V Offset <span id="v-mOffY">0</span>%</label>
+          <input type="range" id="mOffY" min="-100" max="100" value="0" step="1">
+        </div>
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="alternate" checked>
+        <label for="alternate">Offset rows</label>
+      </div>
+    </div>
+
+      <div id="mirrorControls" style="display:none">
+        <div class="control">
+          <label>Mirror</label>
+          <select id="mirrorMode">
+            <option value="both">Both Axes</option>
+            <option value="horizontal">Horizontal Only</option>
+            <option value="vertical">Vertical Only</option>
+            <option value="diagonal">Diagonal</option>
+            <option value="none">None</option>
+          </select>
+        </div>
+        <div class="control" style="display:flex;align-items:center;gap:8px">
+          <label id="originLabel" style="opacity:0.6;font-size:0.85em">Click canvas to set origin</label>
+          <button id="btnResetOrigin" style="padding:2px 10px;font-size:0.85em;display:none">Reset</button>
+        </div>
+      </div>
+
+      <div id="fissureControls" style="display:none">
+        <div class="control">
+          <label>Branch Spread <span id="v-fSpread">50</span>%</label>
+          <input type="range" id="fSpread" min="0" max="100" value="50" step="1">
+        </div>
+        <div class="control">
+          <label>Fork Rate <span id="v-fFork">50</span>%</label>
+          <input type="range" id="fFork" min="0" max="100" value="50" step="1">
+        </div>
+        <div class="control">
+          <label>Branch Length <span id="v-fLength">50</span>%</label>
+          <input type="range" id="fLength" min="0" max="100" value="50" step="1">
+        </div>
+        <div class="control">
+          <label>Root Count <span id="v-fRoots">50</span>%</label>
+          <input type="range" id="fRoots" min="0" max="100" value="50" step="1">
+        </div>
+      </div>
+
+    <div class="divider"></div>
+
+    <div class="control-group">
+      <h3>Margin</h3>
+      <div class="control">
+        <label>Edge Margin <span id="v-margin">0.25</span>"</label>
+        <input type="range" id="margin" min="0" max="1" value="0.25" step="0.05">
+      </div>
+      <div class="checkbox-row">
+        <input type="checkbox" id="showBorder">
+        <label for="showBorder">Cut border rectangle</label>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="control-group">
+      <h3>View</h3>
+      <div class="control">
+        <label>Zoom <span id="v-viewZoom">100</span>%</label>
+        <input type="range" id="viewZoom" min="25" max="400" value="100" step="5">
+      </div>
+      <div class="control">
+        <label>Pan X <span id="v-viewPanX">0</span>"</label>
+        <input type="range" id="viewPanX" min="-20" max="20" value="0" step="0.1">
+      </div>
+      <div class="control">
+        <label>Pan Y <span id="v-viewPanY">0</span>"</label>
+        <input type="range" id="viewPanY" min="-20" max="20" value="0" step="0.1">
+      </div>
+      <div class="btn-row" style="margin-top:4px">
+        <button id="btnResetView" style="padding:4px 10px;border-radius:4px;border:1px solid #555;background:#333;color:#fff;cursor:pointer;width:100%">Reset View</button>
+      </div>
+    </div>
+
+    <div class="divider"></div>
+
+    <div class="control-group">
+      <h3>Preview</h3>
+      <div class="checkbox-row">
+        <input type="checkbox" id="showFabric" checked>
+        <label for="showFabric">Simulate fabric</label>
+      </div>
+    </div>
+
+    <div class="btn-row">
+      <button class="btn-primary" id="btnExportSVG">Export SVG</button>
+    </div>
+    <div class="btn-row">
+      <button class="btn-secondary" id="btnExportPNG">Export PNG</button>
+    </div>
+
+    <p class="info">
+      Red lines = laser cut paths.<br>
+      Toggle "Simulate fabric" to preview the result.<br>
+      SVG exports at 1 unit = 1 inch for direct laser cutter import.
+    </p>
+  </div>
+
+  <div class="canvas-area">
+    <canvas id="canvas"></canvas>
+  </div>
+
+  <script>
+    const canvas = document.getElementById('canvas');
+    const ctx = canvas.getContext('2d');
+    const PX_PER_INCH = 300;
+    let patternOrigin = null;
+
+    const C = {};
+    const ids = [
+      'canvasW','canvasH','patternType','cellSize','cutRatio','rotation',
+      'starPoints','cornerR','organic','alternate','margin','showBorder','showFabric',
+      'vSmooth','vNoise','vElongation','vFlowAngle','vSeed',
+      'mGap','mMode','mSpaceX','mSpaceY','mOffX','mOffY',
+      'mirrorMode','fSpread','fFork','fLength','fRoots',
+      'viewZoom','viewPanX','viewPanY'
+    ];
+    ids.forEach(id => C[id] = document.getElementById(id));
+
+    function readP() {
+      return {
+        cw: +C.canvasW.value,
+        ch: +C.canvasH.value,
+        type: C.patternType.value,
+        cell: +C.cellSize.value,
+        ratio: +C.cutRatio.value / 100,
+        rot: +C.rotation.value * Math.PI / 180,
+        starPts: +C.starPoints.value,
+        cornerR: +C.cornerR.value / 100,
+        organic: +C.organic.value / 100,
+        offset: C.alternate.checked,
+        margin: +C.margin.value,
+        border: C.showBorder.checked,
+        fabric: C.showFabric.checked,
+        vSmooth: +C.vSmooth.value / 100,
+        vNoise: +C.vNoise.value / 100,
+        vElongation: +C.vElongation.value / 100,
+        vFlowAngle: +C.vFlowAngle.value * Math.PI / 180,
+        vSeed: +C.vSeed.value,
+        mGap: +C.mGap.value / 100,
+        mMode: C.mMode.value,
+        mSpaceX: +C.mSpaceX.value / 100,
+        mSpaceY: +C.mSpaceY.value / 100,
+        mOffX: +C.mOffX.value / 100,
+        mOffY: +C.mOffY.value / 100,
+        mirror: C.mirrorMode.value,
+        fSpread: +C.fSpread.value / 100,
+        fFork: +C.fFork.value / 100,
+        fLength: +C.fLength.value / 100,
+        fRoots: +C.fRoots.value / 100,
+        viewZoom: +C.viewZoom.value / 100,
+        viewPanX: +C.viewPanX.value,
+        viewPanY: +C.viewPanY.value,
+        origin: patternOrigin,
+      };
+    }
+
+    function applyView(p) {
+      const z = p.viewZoom;
+      const vw = p.cw / z;
+      const vh = p.ch / z;
+      const ox = p.viewPanX;
+      const oy = p.viewPanY;
+      return Object.assign({}, p, {
+        _realCw: p.cw, _realCh: p.ch,
+        _viewOx: (p.cw - vw) / 2 + ox,
+        _viewOy: (p.ch - vh) / 2 + oy,
+        _viewScale: z,
+        cw: vw, ch: vh,
+        margin: p.margin / z,
+      });
+    }
+
+    // ── Seeded random for reproducible organic patterns ──
+    function seededRng(seed) {
+      let s = seed | 0;
+      return () => { s = (s * 1664525 + 1013904223) & 0x7fffffff; return s / 0x7fffffff; };
+    }
+
+    // ── Shape generators ──
+
+    function generatePaths(p) {
+      const organic = ['voronoi','waves','teardrops','crescents','dna','dragonscales','channels','matrix','circuit','fissure'];
+      if (organic.includes(p.type)) return generateOrganicPaths(p);
+      return generateGeometricPaths(p);
+    }
+
+    function generateGeometricPaths(p) {
+      const paths = [];
+      const m = p.margin;
+      const cell = p.cell;
+      const r = cell * p.ratio * 0.5;
+      const cols = Math.ceil((p.cw - m * 2) / cell) + 2;
+      const rows = Math.ceil((p.ch - m * 2) / cell) + 2;
+
+      for (let row = -1; row <= rows; row++) {
+        for (let col = -1; col <= cols; col++) {
+          let cx = m + col * cell + cell / 2;
+          let cy = m + row * cell + cell / 2;
+          if (p.offset && row % 2 !== 0) cx += cell / 2;
+          if (cx - r > p.cw - m || cx + r < m || cy - r > p.ch - m || cy + r < m) continue;
+
+          let shape;
+          switch (p.type) {
+            case 'diamonds': shape = makeDiamond(cx, cy, r, p.cornerR); break;
+            case 'circles':  shape = makeCircle(cx, cy, r); break;
+            case 'hexagons': shape = makePolygon(cx, cy, r, 6, p.cornerR); break;
+            case 'stars':    shape = makeStar(cx, cy, r, p.starPts, p.cornerR); break;
+            case 'scales':   shape = makeScale(cx, cy, r); break;
+            case 'slits':    shape = makeSlit(cx, cy, r, cell); break;
+            case 'crosses':  shape = makeCross(cx, cy, r, p.cornerR); break;
+            case 'petals':   shape = makePetal(cx, cy, r); break;
+          }
+          if (shape) paths.push(shape);
+        }
+      }
+      return paths;
+    }
+
+    function generateOrganicPaths(p) {
+      const m = p.margin;
+      const w = p.cw - m * 2;
+      const h = p.ch - m * 2;
+
+      switch (p.type) {
+        case 'voronoi':         return makeVoronoi(p, m, w, h);
+        case 'waves':           return makeWaves(p, m, w, h);
+        case 'teardrops':       return makeTeardrops(p, m, w, h);
+        case 'crescents':       return makeCrescents(p, m, w, h);
+        case 'dna':             return makeDNA(p, m, w, h);
+        case 'dragonscales':    return makeDragonScales(p, m, w, h);
+        case 'channels':        return makeChannels(p, m, w, h);
+        case 'matrix':          return makeMatrix(p, m, w, h);
+        case 'circuit':         return makeCircuit(p, m, w, h);
+        case 'fissure':         return makeFissure(p, m, w, h);
+      }
+      return [];
+    }
+
+    // ── Geometric shapes ──
+
+    function makeDiamond(cx, cy, r, cr) {
+      const pts = [
+        { x: cx, y: cy - r }, { x: cx + r, y: cy },
+        { x: cx, y: cy + r }, { x: cx - r, y: cy },
+      ];
+      if (cr > 0) return { type: 'rounded-polygon', pts, radius: r * cr * 0.4 };
+      return { type: 'polygon', pts };
+    }
+
+    function makeCircle(cx, cy, r) {
+      return { type: 'circle', cx, cy, r };
+    }
+
+    function makePolygon(cx, cy, r, n, cr) {
+      const pts = [];
+      for (let i = 0; i < n; i++) {
+        const a = (Math.PI * 2 / n) * i - Math.PI / 2;
+        pts.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
+      }
+      if (cr > 0) return { type: 'rounded-polygon', pts, radius: r * cr * 0.4 };
+      return { type: 'polygon', pts };
+    }
+
+    function makeStar(cx, cy, r, n, cr) {
+      const pts = [];
+      const inner = r * 0.45;
+      for (let i = 0; i < n * 2; i++) {
+        const a = (Math.PI / n) * i - Math.PI / 2;
+        const rad = i % 2 === 0 ? r : inner;
+        pts.push({ x: cx + Math.cos(a) * rad, y: cy + Math.sin(a) * rad });
+      }
+      if (cr > 0) return { type: 'rounded-polygon', pts, radius: inner * cr * 0.5 };
+      return { type: 'polygon', pts };
+    }
+
+    function makeScale(cx, cy, r) {
+      return { type: 'arc', cx, cy: cy - r * 0.3, r, startA: Math.PI * 0.15, endA: Math.PI * 0.85 };
+    }
+
+    function makeSlit(cx, cy, r, cell) {
+      const len = r * 1.8;
+      return { type: 'line', x1: cx - len / 2, y1: cy, x2: cx + len / 2, y2: cy };
+    }
+
+    function makeCross(cx, cy, r, cr) {
+      const arm = r * 0.3;
+      const pts = [
+        { x: cx - arm, y: cy - r }, { x: cx + arm, y: cy - r },
+        { x: cx + arm, y: cy - arm }, { x: cx + r, y: cy - arm },
+        { x: cx + r, y: cy + arm }, { x: cx + arm, y: cy + arm },
+        { x: cx + arm, y: cy + r }, { x: cx - arm, y: cy + r },
+        { x: cx - arm, y: cy + arm }, { x: cx - r, y: cy + arm },
+        { x: cx - r, y: cy - arm }, { x: cx - arm, y: cy - arm },
+      ];
+      if (cr > 0) return { type: 'rounded-polygon', pts, radius: arm * cr * 0.8 };
+      return { type: 'polygon', pts };
+    }
+
+    function makePetal(cx, cy, r) {
+      return { type: 'petal', cx, cy, r };
+    }
+
+    // ── Organic / Futuristic shapes ──
+
+    // ── Shared voronoi seed generation + relaxation ──
+
+    function generateVoronoiSeeds(rng, m, w, h, cell, organic) {
+      const sizeVar = organic * 0.5;
+      const count = Math.round((w * h) / (cell * cell));
+      const seeds = [];
+      for (let i = 0; i < count; i++) {
+        seeds.push({
+          x: m + rng() * w, y: m + rng() * h,
+          weight: 1 + (rng() - 0.5) * sizeVar * 2,
+        });
+      }
+      for (let iter = 0; iter < 3; iter++) {
+        for (const seed of seeds) {
+          let sumX = 0, sumY = 0, n = 0;
+          for (let a = 0; a < Math.PI * 2; a += Math.PI / 6) {
+            const dx = Math.cos(a), dy = Math.sin(a);
+            let minD = cell * 2;
+            for (const o of seeds) {
+              if (o === seed) continue;
+              const mx2 = (seed.x + o.x) / 2, my2 = (seed.y + o.y) / 2;
+              const nx2 = o.x - seed.x, ny2 = o.y - seed.y;
+              const den = dx * nx2 + dy * ny2;
+              if (den <= 0) continue;
+              const t2 = ((mx2 - seed.x) * nx2 + (my2 - seed.y) * ny2) / den;
+              if (t2 > 0 && t2 < minD) minD = t2;
+            }
+            sumX += seed.x + dx * minD * 0.5;
+            sumY += seed.y + dy * minD * 0.5;
+            n++;
+          }
+          seed.x = seed.x * 0.4 + (sumX / n) * 0.6;
+          seed.y = seed.y * 0.4 + (sumY / n) * 0.6;
+          seed.x = Math.max(m, Math.min(m + w, seed.x));
+          seed.y = Math.max(m, Math.min(m + h, seed.y));
+        }
+      }
+      return seeds;
+    }
+
+    function voronoiRaycast(seed, seeds, m, w, h, cell, angle) {
+      const dx = Math.cos(angle), dy = Math.sin(angle);
+      let minDist = Infinity;
+      for (const o of seeds) {
+        if (o === seed) continue;
+        const mx = (seed.x + o.x) / 2, my = (seed.y + o.y) / 2;
+        const nx = o.x - seed.x, ny = o.y - seed.y;
+        const den = dx * nx + dy * ny;
+        if (den <= 0) continue;
+        const t = ((mx - seed.x) * nx + (my - seed.y) * ny) / den / seed.weight;
+        if (t > 0 && t < minDist) minDist = t;
+      }
+      if (Math.abs(dx) > 1e-9) {
+        const t1 = (m - seed.x) / dx, t2 = (m + w - seed.x) / dx;
+        if (t1 > 0 && t1 < minDist) minDist = t1;
+        if (t2 > 0 && t2 < minDist) minDist = t2;
+      }
+      if (Math.abs(dy) > 1e-9) {
+        const t1 = (m - seed.y) / dy, t2 = (m + h - seed.y) / dy;
+        if (t1 > 0 && t1 < minDist) minDist = t1;
+        if (t2 > 0 && t2 < minDist) minDist = t2;
+      }
+      return Math.min(minDist, cell * 2);
+    }
+
+    // ── Unified Voronoi generator ──
+
+    function makeVoronoi(p, m, w, h) {
+      const rng = seededRng(p.vSeed);
+      const cell = p.cell;
+      const seeds = generateVoronoiSeeds(rng, m, w, h, cell, p.organic);
+      const paths = [];
+      const gap = 1 - p.ratio;
+      const steps = 48;
+
+      const smoothK = Math.max(1, Math.floor(steps * (0.02 + p.vSmooth * 0.2)));
+      const noise = p.vNoise;
+      const elong = p.vElongation;
+      const flowBase = p.vFlowAngle;
+
+      for (const seed of seeds) {
+        const localFlow = flowBase + (rng() - 0.5) * 0.6;
+
+        const rawDists = [];
+        for (let i = 0; i < steps; i++) {
+          const a = (Math.PI * 2 / steps) * i;
+          rawDists.push(voronoiRaycast(seed, seeds, m, w, h, cell, a));
+        }
+
+        const smoothed = [];
+        for (let i = 0; i < steps; i++) {
+          let sum = 0;
+          for (let k = -smoothK; k <= smoothK; k++) {
+            sum += rawDists[(i + k + steps) % steps];
+          }
+          smoothed.push(sum / (smoothK * 2 + 1));
+        }
+
+        const avgD = smoothed.reduce((a, b) => a + b, 0) / steps;
+        const roundBlend = p.vSmooth * 0.6;
+
+        const freq1 = 2 + Math.floor(rng() * 3);
+        const freq2 = 3 + Math.floor(rng() * 4);
+        const phase1 = rng() * Math.PI * 2;
+        const phase2 = rng() * Math.PI * 2;
+
+        const cellPts = [];
+        for (let i = 0; i < steps; i++) {
+          const a = (Math.PI * 2 / steps) * i;
+
+          let d = smoothed[i] * (1 - roundBlend) + avgD * roundBlend;
+
+          const wave = 1 + Math.sin(a * freq1 + phase1) * noise * 0.1
+                         + Math.sin(a * freq2 + phase2) * noise * 0.07;
+          d *= wave;
+
+          if (elong > 0) {
+            const alignment = Math.abs(Math.cos(a - localFlow));
+            const stretch = 1 + alignment * elong * 0.8;
+            const compress = 1 - (1 - alignment) * elong * 0.35;
+            d *= stretch * compress;
+          }
+
+          const dist = d * (1 - gap);
+          cellPts.push({
+            x: seed.x + Math.cos(a) * dist,
+            y: seed.y + Math.sin(a) * dist,
+          });
+        }
+        paths.push({ type: 'smooth-closed', pts: cellPts });
+      }
+      return paths;
+    }
+
+    function makeWaves(p, m, w, h) {
+      const paths = [];
+      const cell = p.cell;
+      const amp = cell * p.ratio * 0.5;
+      const waveLen = cell * (1 + p.organic);
+      const rows = Math.ceil(h / cell) + 1;
+      const segs = Math.ceil(w / (waveLen / 20)) + 1;
+
+      for (let row = 0; row < rows; row++) {
+        const y0 = m + row * cell;
+        const phase = row * Math.PI * 0.6 * (1 + p.organic);
+        const pts = [];
+        for (let i = 0; i <= segs; i++) {
+          const t = i / segs;
+          const x = m + t * w;
+          const y = y0 + Math.sin((t * w / waveLen) * Math.PI * 2 + phase) * amp;
+          pts.push({ x, y });
+        }
+        paths.push({ type: 'smooth-open', pts });
+      }
+      return paths;
+    }
+
+    function makeTeardrops(p, m, w, h) {
+      const paths = [];
+      const cell = p.cell;
+      const r = cell * p.ratio * 0.45;
+      const cols = Math.ceil(w / cell) + 2;
+      const rows = Math.ceil(h / cell) + 2;
+      const rng = seededRng(p.vSeed || 1);
+
+      for (let row = -1; row <= rows; row++) {
+        for (let col = -1; col <= cols; col++) {
+          let cx = m + col * cell + cell / 2;
+          let cy = m + row * cell + cell / 2;
+          if (p.offset && row % 2 !== 0) cx += cell / 2;
+          if (cx < m - r || cx > m + w + r || cy < m - r || cy > m + h + r) continue;
+
+          const angle = rng() * Math.PI * 2 * p.organic + (row % 2 === 0 ? 0 : Math.PI);
+          const tailLen = r * (1.2 + p.organic * 0.8);
+          const tipX = cx + Math.cos(angle) * tailLen;
+          const tipY = cy + Math.sin(angle) * tailLen;
+          const bulge = r * 0.75;
+          const perpA = angle + Math.PI / 2;
+          const pts = [];
+          const steps = 24;
+          for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            const a = Math.PI * 2 * t;
+            const baseR = r * (1 - 0.3 * Math.pow(Math.max(0, Math.cos(a)), 2));
+            const bx = cx + Math.cos(a) * baseR;
+            const by = cy + Math.sin(a) * baseR;
+            const pull = Math.pow(Math.max(0, Math.cos(a - angle)), 3);
+            pts.push({
+              x: bx + (tipX - bx) * pull * 0.6,
+              y: by + (tipY - by) * pull * 0.6,
+            });
+          }
+          paths.push({ type: 'smooth-closed', pts });
+        }
+      }
+      return paths;
+    }
+
+    function makeCrescents(p, m, w, h) {
+      const paths = [];
+      const cell = p.cell;
+      const r = cell * p.ratio * 0.45;
+      const cols = Math.ceil(w / cell) + 2;
+      const rows = Math.ceil(h / cell) + 2;
+      const rng = seededRng(p.vSeed || 1);
+
+      for (let row = -1; row <= rows; row++) {
+        for (let col = -1; col <= cols; col++) {
+          let cx = m + col * cell + cell / 2;
+          let cy = m + row * cell + cell / 2;
+          if (p.offset && row % 2 !== 0) cx += cell / 2;
+          if (cx < m - r || cx > m + w + r || cy < m - r || cy > m + h + r) continue;
+
+          const angle = (row + col) * 0.5 + p.organic * rng() * Math.PI;
+          const offset = r * (0.3 + p.organic * 0.3);
+          const pts = [];
+          const steps = 32;
+          for (let i = 0; i <= steps; i++) {
+            const t = i / steps;
+            const a = -Math.PI * 0.8 + Math.PI * 1.6 * t + angle;
+            pts.push({ x: cx + Math.cos(a) * r, y: cy + Math.sin(a) * r });
+          }
+          for (let i = steps; i >= 0; i--) {
+            const t = i / steps;
+            const a = -Math.PI * 0.8 + Math.PI * 1.6 * t + angle;
+            const ir = r - offset;
+            const dx = Math.cos(angle + Math.PI / 2) * offset * 0.5;
+            const dy = Math.sin(angle + Math.PI / 2) * offset * 0.5;
+            pts.push({ x: cx + dx + Math.cos(a) * ir, y: cy + dy + Math.sin(a) * ir });
+          }
+          paths.push({ type: 'smooth-closed', pts });
+        }
+      }
+      return paths;
+    }
+
+    function makeDNA(p, m, w, h) {
+      const paths = [];
+      const cell = p.cell;
+      const amp = cell * p.ratio * 1.2;
+      const strandW = cell * 0.12;
+      const cols = Math.ceil(w / (cell * 2)) + 1;
+      const segs = 40;
+
+      for (let col = 0; col <= cols; col++) {
+        const baseX = m + col * cell * 2;
+
+        for (let strand = 0; strand < 2; strand++) {
+          const phase = strand * Math.PI;
+          const pts = [];
+          for (let i = 0; i <= segs; i++) {
+            const t = i / segs;
+            const y = m + t * h;
+            const x = baseX + Math.sin((t * h / cell) * Math.PI + phase) * amp * 0.5;
+            pts.push({ x, y });
+          }
+          paths.push({ type: 'smooth-open', pts });
+        }
+
+        const rungs = Math.ceil(h / (cell * 0.5));
+        for (let rung = 0; rung < rungs; rung++) {
+          const t = (rung + 0.5) / rungs;
+          const y = m + t * h;
+          const freq = (t * h / cell) * Math.PI;
+          const x1 = baseX + Math.sin(freq) * amp * 0.5;
+          const x2 = baseX + Math.sin(freq + Math.PI) * amp * 0.5;
+          const mx = (x1 + x2) / 2;
+          const gap = Math.abs(x1 - x2) * 0.15;
+          if (Math.abs(x1 - x2) > cell * 0.3) {
+            paths.push({ type: 'line', x1: Math.min(x1, x2) + gap, y1: y, x2: mx - gap * 0.5, y2: y });
+            paths.push({ type: 'line', x1: mx + gap * 0.5, y1: y, x2: Math.max(x1, x2) - gap, y2: y });
+          }
+        }
+      }
+      return paths;
+    }
+
+    function makeDragonScales(p, m, w, h) {
+      const paths = [];
+      const cell = p.cell;
+      const r = cell * p.ratio * 0.45;
+      const rowH = cell * 0.55;
+      const rows = Math.ceil(h / rowH) + 3;
+      const cols = Math.ceil(w / cell) + 2;
+      const rng = seededRng(p.vSeed || 1);
+      const wobble = p.organic * 0.15;
+
+      for (let row = -1; row <= rows; row++) {
+        for (let col = -1; col <= cols; col++) {
+          let cx = m + col * cell + cell / 2;
+          let cy = m + row * rowH;
+          if (row % 2 !== 0) cx += cell / 2;
+          if (cx < m - r * 2 || cx > m + w + r * 2 || cy < m - r * 2 || cy > m + h + r * 2) continue;
+
+          const sr = r * (1 + (rng() - 0.5) * wobble * 2);
+          const pts = [];
+          const arcSteps = 20;
+
+          // Rounded bottom: semicircle arc from left to right (0° to 180° mapped as scallop)
+          for (let i = 0; i <= arcSteps; i++) {
+            const t = i / arcSteps;
+            const a = Math.PI * (1 - t);
+            const wr = 1 + (rng() - 0.5) * wobble * 0.3;
+            pts.push({
+              x: cx + Math.cos(a) * sr * wr,
+              y: cy + Math.sin(a) * sr * 1.2 * wr,
+            });
+          }
+
+          // Pointed tip at top center
+          const tipY = cy - sr * 0.9;
+          const rightX = pts[pts.length - 1].x;
+          const rightY = pts[pts.length - 1].y;
+          const leftX = pts[0].x;
+          const leftY = pts[0].y;
+
+          // Right edge curves inward to tip
+          const edgeSteps = 5;
+          for (let i = 1; i <= edgeSteps; i++) {
+            const t = i / (edgeSteps + 1);
+            const ease = t * t;
+            pts.push({
+              x: rightX + (cx - rightX) * ease + (rng() - 0.5) * wobble * sr * 0.15,
+              y: rightY + (tipY - rightY) * ease,
+            });
+          }
+
+          // Tip
+          pts.push({ x: cx, y: tipY });
+
+          // Tip down left edge
+          for (let i = 1; i <= edgeSteps; i++) {
+            const t = i / (edgeSteps + 1);
+            const ease = 1 - (1 - t) * (1 - t);
+            pts.push({
+              x: cx + (leftX - cx) * ease + (rng() - 0.5) * wobble * sr * 0.15,
+              y: tipY + (leftY - tipY) * ease,
+            });
+          }
+
+          paths.push({ type: 'smooth-closed', pts });
+        }
+      }
+      return paths;
+    }
+
+    // ── Geometric Channels ──
+
+    function makeChannels(p, m, w, h) {
+      const paths = [];
+      const cell = p.cell;
+      const rng = seededRng(p.vSeed || 1);
+      const gap = cell * (1 - p.ratio) * 0.5;
+      const chanW = cell * p.ratio * 0.35;
+      const org = p.organic;
+
+      const cols = Math.ceil(w / cell) + 1;
+      const rows = Math.ceil(h / cell) + 1;
+
+      // Vertical channels
+      for (let col = 0; col <= cols; col++) {
+        const x = m + col * cell;
+        for (let row = 0; row < rows; row++) {
+          const y1 = m + row * cell + gap;
+          const y2 = m + (row + 1) * cell - gap;
+          if (y2 <= y1) continue;
+          const xOff = (rng() - 0.5) * org * chanW * 0.5;
+          paths.push({
+            type: 'polygon',
+            pts: [
+              { x: x - chanW + xOff, y: y1 },
+              { x: x + chanW + xOff, y: y1 },
+              { x: x + chanW + xOff, y: y2 },
+              { x: x - chanW + xOff, y: y2 },
+            ],
+          });
+        }
+      }
+
+      // Horizontal channels
+      for (let row = 0; row <= rows; row++) {
+        const y = m + row * cell;
+        for (let col = 0; col < cols; col++) {
+          const x1 = m + col * cell + gap;
+          const x2 = m + (col + 1) * cell - gap;
+          if (x2 <= x1) continue;
+          const yOff = (rng() - 0.5) * org * chanW * 0.5;
+          paths.push({
+            type: 'polygon',
+            pts: [
+              { x: x1, y: y - chanW + yOff },
+              { x: x2, y: y - chanW + yOff },
+              { x: x2, y: y + chanW + yOff },
+              { x: x1, y: y + chanW + yOff },
+            ],
+          });
+        }
+      }
+
+      // Diamond cutouts at intersections
+      for (let row = 0; row <= rows; row++) {
+        for (let col = 0; col <= cols; col++) {
+          const cx = m + col * cell;
+          const cy = m + row * cell;
+          const dr = gap * 0.6 * p.ratio;
+          if (dr < 0.01) continue;
+          paths.push({
+            type: 'polygon',
+            pts: [
+              { x: cx, y: cy - dr },
+              { x: cx + dr, y: cy },
+              { x: cx, y: cy + dr },
+              { x: cx - dr, y: cy },
+            ],
+          });
+        }
+      }
+
+      return paths;
+    }
+
+    // ── Matrix Binary (7-segment display style) ──
+
+    // ── Glyph tracing: extract font character outlines as polygons ──
+
+    function makeMatrix(p, m, w, h) {
+      const paths = [];
+      const cell = p.cell;
+      const rng = seededRng(p.vSeed || 1);
+      const hSpace = cell * p.mSpaceX;
+      const vSpace = cell * p.mSpaceY;
+      const stepX = cell + hSpace;
+      const stepY = cell * 1.6 + vSpace;
+      const cols = Math.floor(w / stepX) + 2;
+      const rows = Math.floor(h / stepY) + 2;
+      const segT = cell * 0.12 * p.ratio;
+      const offX = p.mOffX * stepX;
+      const offY = p.mOffY * stepY;
+
+      const SEGS_0 = [1,1,1,1,1,1,0];
+      const SEGS_1 = [0,1,1,0,0,0,0];
+
+      for (let row = -1; row < rows; row++) {
+        for (let col = -1; col < cols; col++) {
+          const x = m + col * stepX + cell * 0.15 + offX;
+          const y = m + row * stepY + cell * 0.15 + offY;
+          const dw = cell * 0.7;
+          const dh = cell * 1.3;
+          const halfH = dh * 0.5;
+
+          let segs;
+          switch (p.mMode) {
+            case 'zeros': segs = SEGS_0; break;
+            case 'ones':  segs = SEGS_1; break;
+            case 'alternating': segs = (col + row) % 2 === 0 ? SEGS_1 : SEGS_0; break;
+            default: segs = rng() < 0.5 ? SEGS_0 : SEGS_1;
+          }
+          const inset = segT * (0.3 + p.mGap * 2.0);
+          const isOne = segs === SEGS_1;
+          const cx1 = isOne ? (dw - segT) / 2 : 0;
+
+          if (segs[0]) {
+            paths.push({ type: 'polygon', pts: [
+              { x: x + inset, y: y },
+              { x: x + dw - inset, y: y },
+              { x: x + dw - inset - segT * 0.5, y: y + segT },
+              { x: x + inset + segT * 0.5, y: y + segT },
+            ]});
+          }
+          if (segs[1]) {
+            paths.push({ type: 'polygon', pts: [
+              { x: x + dw - cx1, y: y + inset },
+              { x: x + dw - cx1, y: y + halfH - inset },
+              { x: x + dw - segT - cx1, y: y + halfH - inset - segT * 0.5 },
+              { x: x + dw - segT - cx1, y: y + inset + segT * 0.5 },
+            ]});
+          }
+          if (segs[2]) {
+            paths.push({ type: 'polygon', pts: [
+              { x: x + dw - cx1, y: y + halfH + inset },
+              { x: x + dw - cx1, y: y + dh - inset },
+              { x: x + dw - segT - cx1, y: y + dh - inset - segT * 0.5 },
+              { x: x + dw - segT - cx1, y: y + halfH + inset + segT * 0.5 },
+            ]});
+          }
+          if (segs[3]) {
+            paths.push({ type: 'polygon', pts: [
+              { x: x + inset + segT * 0.5, y: y + dh - segT },
+              { x: x + dw - inset - segT * 0.5, y: y + dh - segT },
+              { x: x + dw - inset, y: y + dh },
+              { x: x + inset, y: y + dh },
+            ]});
+          }
+          if (segs[4]) {
+            paths.push({ type: 'polygon', pts: [
+              { x: x, y: y + halfH + inset },
+              { x: x + segT, y: y + halfH + inset + segT * 0.5 },
+              { x: x + segT, y: y + dh - inset - segT * 0.5 },
+              { x: x, y: y + dh - inset },
+            ]});
+          }
+          if (segs[5]) {
+            paths.push({ type: 'polygon', pts: [
+              { x: x, y: y + inset },
+              { x: x + segT, y: y + inset + segT * 0.5 },
+              { x: x + segT, y: y + halfH - inset - segT * 0.5 },
+              { x: x, y: y + halfH - inset },
+            ]});
+          }
+          if (segs[6]) {
+            paths.push({ type: 'polygon', pts: [
+              { x: x + inset + segT * 0.5, y: y + halfH - segT * 0.5 },
+              { x: x + dw - inset - segT * 0.5, y: y + halfH - segT * 0.5 },
+              { x: x + dw - inset, y: y + halfH },
+              { x: x + dw - inset - segT * 0.5, y: y + halfH + segT * 0.5 },
+              { x: x + inset + segT * 0.5, y: y + halfH + segT * 0.5 },
+              { x: x + inset, y: y + halfH },
+            ]});
+          }
+        }
+      }
+      return paths;
+    }
+
+    function mirrorLine(paths, mode, cx, cy, x1, y1, x2, y2) {
+      switch (mode) {
+        case 'none':
+          paths.push({ type: 'line', x1: cx + x1, y1: cy + y1, x2: cx + x2, y2: cy + y2 });
+          break;
+        case 'horizontal':
+          paths.push({ type: 'line', x1: cx + x1, y1: cy + y1, x2: cx + x2, y2: cy + y2 });
+          paths.push({ type: 'line', x1: cx - x1, y1: cy + y1, x2: cx - x2, y2: cy + y2 });
+          break;
+        case 'vertical':
+          paths.push({ type: 'line', x1: cx + x1, y1: cy + y1, x2: cx + x2, y2: cy + y2 });
+          paths.push({ type: 'line', x1: cx + x1, y1: cy - y1, x2: cx + x2, y2: cy - y2 });
+          break;
+        case 'diagonal':
+          paths.push({ type: 'line', x1: cx + x1, y1: cy + y1, x2: cx + x2, y2: cy + y2 });
+          paths.push({ type: 'line', x1: cx + y1, y1: cy + x1, x2: cx + y2, y2: cy + x2 });
+          break;
+        default:
+          paths.push({ type: 'line', x1: cx + x1, y1: cy + y1, x2: cx + x2, y2: cy + y2 });
+          paths.push({ type: 'line', x1: cx - x1, y1: cy + y1, x2: cx - x2, y2: cy + y2 });
+          paths.push({ type: 'line', x1: cx + x1, y1: cy - y1, x2: cx + x2, y2: cy - y2 });
+          paths.push({ type: 'line', x1: cx - x1, y1: cy - y1, x2: cx - x2, y2: cy - y2 });
+          break;
+      }
+    }
+
+    function makeCircuit(p, m, w, h) {
+      const paths = [];
+      const cell = p.cell;
+      const rng = seededRng(p.vSeed || 1);
+      const cx = p.origin ? p.origin.x : w / 2 + m;
+      const cy = p.origin ? p.origin.y : h / 2 + m;
+      const grid = cell * 0.25;
+      const mode = p.mirror;
+      const halfW = mode === 'none' ? w : w / 2;
+      const halfH = mode === 'none' ? h : h / 2;
+      const maxGx = Math.floor(halfW / grid);
+      const maxGy = Math.floor(halfH / grid);
+      const density = 0.3 + p.organic * 0.5;
+      const nodes = Math.floor(30 + density * 80);
+
+      const visited = new Set();
+      const segKey = (ax, ay, bx, by) => {
+        const k1 = Math.min(ax,bx) + ',' + Math.min(ay,by);
+        const k2 = Math.max(ax,bx) + ',' + Math.max(ay,by);
+        return k1 + '-' + k2;
+      };
+      const dirs = [[1,0],[0,1],[-1,0],[0,-1]];
+      const segments = [];
+
+      for (let n = 0; n < nodes; n++) {
+        let gx = Math.floor(rng() * maxGx);
+        let gy = Math.floor(rng() * maxGy);
+        const steps = Math.floor(4 + rng() * 12);
+        let di = Math.floor(rng() * 4);
+
+        for (let s = 0; s < steps; s++) {
+          if (rng() < 0.35) di = Math.floor(rng() * 4);
+          const dx = dirs[di][0], dy = dirs[di][1];
+          const nx = gx + dx, ny = gy + dy;
+          if (nx >= 0 && ny >= 0 && nx < maxGx && ny < maxGy) {
+            const sk = segKey(gx, gy, nx, ny);
+            if (!visited.has(sk)) {
+              visited.add(sk);
+              segments.push([gx * grid, gy * grid, nx * grid, ny * grid]);
+            }
+            gx = nx; gy = ny;
+          }
+
+          if (rng() < 0.3) {
+            let bdi = (di + (rng() < 0.5 ? 1 : 3)) % 4;
+            let bx = gx, by = gy;
+            const bLen = Math.floor(1 + rng() * 6);
+            for (let b = 0; b < bLen; b++) {
+              const bnx = bx + dirs[bdi][0], bny = by + dirs[bdi][1];
+              if (bnx >= 0 && bny >= 0 && bnx < maxGx && bny < maxGy) {
+                const bsk = segKey(bx, by, bnx, bny);
+                if (!visited.has(bsk)) {
+                  visited.add(bsk);
+                  segments.push([bx * grid, by * grid, bnx * grid, bny * grid]);
+                }
+                bx = bnx; by = bny;
+              }
+            }
+          }
+        }
+      }
+
+      const gap = grid * (1 - p.ratio) * 0.5;
+      const offX = mode === 'none' ? -halfW / 2 : 0;
+      const offY = mode === 'none' ? -halfH / 2 : 0;
+      for (const [x1, y1, x2, y2] of segments) {
+        const dx = x2 - x1, dy = y2 - y1;
+        const len = Math.sqrt(dx * dx + dy * dy);
+        const ux = dx / len, uy = dy / len;
+        mirrorLine(paths, mode, cx, cy,
+          x1 + ux * gap + offX, y1 + uy * gap + offY,
+          x2 - ux * gap + offX, y2 - uy * gap + offY);
+      }
+      return paths;
+    }
+
+    function makeFissure(p, m, w, h) {
+      const paths = [];
+      const rng = seededRng(p.vSeed || 1);
+      const cx = p.origin ? p.origin.x : w / 2 + m;
+      const cy = p.origin ? p.origin.y : h / 2 + m;
+      const mode = p.mirror;
+      const halfW = (mode === 'none' ? w : w / 2) * 0.92;
+      const halfH = (mode === 'none' ? h : h / 2) * 0.92;
+      const scale = p.cell;
+      const spread = 0.2 + p.fSpread * 1.2;
+      const forkRate = 0.15 + p.fFork * 0.6;
+      const lenMul = 0.5 + p.fLength * 1.5;
+      const numRoots = Math.floor(4 + p.fRoots * 30);
+      const maxDepth = Math.floor(4 + p.organic * 5);
+      const segLen = scale * 0.25 * p.ratio * lenMul;
+
+      function branch(x, y, angle, depth, remaining) {
+        if (remaining <= 0 || depth > maxDepth) return;
+        const len = segLen * (0.5 + rng() * 1.0);
+        const nx = x + Math.cos(angle) * len;
+        const ny = y + Math.sin(angle) * len;
+        if (Math.abs(nx) > halfW || Math.abs(ny) > halfH) return;
+
+        const offX = mode === 'none' ? -halfW / 2 : 0;
+        const offY = mode === 'none' ? -halfH / 2 : 0;
+        mirrorLine(paths, mode, cx, cy, x + offX, y + offY, nx + offX, ny + offY);
+
+        const drift = (rng() - 0.5) * spread;
+        branch(nx, ny, angle + drift, depth, remaining - 1);
+
+        if (rng() < forkRate && depth < maxDepth) {
+          const fork = (rng() < 0.5 ? 1 : -1) * (0.3 + rng() * spread);
+          branch(nx, ny, angle + fork, depth + 1, Math.floor(remaining * 0.7));
+        }
+        if (rng() < forkRate * 0.4 && depth < maxDepth - 1) {
+          const fork2 = (rng() < 0.5 ? 1 : -1) * (0.5 + rng() * spread * 0.8);
+          branch(nx, ny, angle + fork2, depth + 1, Math.floor(remaining * 0.5));
+        }
+      }
+
+      for (let i = 0; i < numRoots; i++) {
+        const startAngle = (Math.PI * 2 / numRoots) * i + (rng() - 0.5) * 0.5;
+        const startR = rng() * scale * 0.3;
+        const sx = Math.cos(startAngle) * startR;
+        const sy = Math.sin(startAngle) * startR;
+        branch(sx, sy, startAngle + (rng() - 0.5) * spread, 0, Math.floor(8 + rng() * 15));
+      }
+      return paths;
+    }
+
+    // ── Canvas drawing ──
+
+    function drawShape(shape, rot) {
+      const s = PX_PER_INCH;
+
+      function getCenter() {
+        if (shape.cx !== undefined) return { x: shape.cx, y: shape.cy };
+        if (shape.pts) return shapeCenter(shape.pts);
+        if (shape.x1 !== undefined) return { x: (shape.x1 + shape.x2) / 2, y: (shape.y1 + shape.y2) / 2 };
+        return { x: 0, y: 0 };
+      }
+
+      if (rot !== 0) {
+        ctx.save();
+        const c = getCenter();
+        ctx.translate(c.x * s, c.y * s);
+        ctx.rotate(rot);
+        ctx.translate(-c.x * s, -c.y * s);
+      }
+
+      if (shape.type === 'text') {
+        ctx.font = `${shape.fontSize * s}px "${shape.fontFamily}"`;
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.strokeText(shape.text, shape.cx * s, shape.cy * s);
+        if (rot !== 0) ctx.restore();
+        return;
+      }
+
+      ctx.beginPath();
+
+      switch (shape.type) {
+        case 'circle':
+          ctx.arc(shape.cx * s, shape.cy * s, shape.r * s, 0, Math.PI * 2);
+          break;
+
+        case 'polygon':
+          for (let i = 0; i < shape.pts.length; i++) {
+            const p = shape.pts[i];
+            if (i === 0) ctx.moveTo(p.x * s, p.y * s);
+            else ctx.lineTo(p.x * s, p.y * s);
+          }
+          ctx.closePath();
+          break;
+
+        case 'rounded-polygon':
+          drawRoundedPolygon(shape.pts, shape.radius, s);
+          break;
+
+        case 'arc':
+          ctx.arc(shape.cx * s, shape.cy * s, shape.r * s, shape.startA, shape.endA);
+          break;
+
+        case 'line':
+          ctx.moveTo(shape.x1 * s, shape.y1 * s);
+          ctx.lineTo(shape.x2 * s, shape.y2 * s);
+          break;
+
+        case 'petal': {
+          const { cx: px, cy: py, r: pr } = shape;
+          const n = 4;
+          for (let i = 0; i < n; i++) {
+            const a = (Math.PI * 2 / n) * i;
+            const a1 = a - 0.5, a2 = a + 0.5;
+            const tipX = px + Math.cos(a) * pr;
+            const tipY = py + Math.sin(a) * pr;
+            if (i === 0) ctx.moveTo(px * s, py * s);
+            ctx.quadraticCurveTo(
+              (px + Math.cos(a1) * pr * 0.6) * s, (py + Math.sin(a1) * pr * 0.6) * s,
+              tipX * s, tipY * s
+            );
+            ctx.quadraticCurveTo(
+              (px + Math.cos(a2) * pr * 0.6) * s, (py + Math.sin(a2) * pr * 0.6) * s,
+              px * s, py * s
+            );
+          }
+          break;
+        }
+
+        case 'smooth-closed': {
+          const pts = shape.pts;
+          const n = pts.length;
+          if (n < 3) break;
+          ctx.moveTo(
+            ((pts[0].x + pts[1].x) / 2) * s,
+            ((pts[0].y + pts[1].y) / 2) * s
+          );
+          for (let i = 0; i < n; i++) {
+            const curr = pts[i];
+            const next = pts[(i + 1) % n];
+            const mx = ((curr.x + next.x) / 2) * s;
+            const my = ((curr.y + next.y) / 2) * s;
+            ctx.quadraticCurveTo(curr.x * s, curr.y * s, mx, my);
+          }
+          ctx.closePath();
+          break;
+        }
+
+        case 'smooth-open': {
+          const pts = shape.pts;
+          if (pts.length < 2) break;
+          ctx.moveTo(pts[0].x * s, pts[0].y * s);
+          if (pts.length === 2) {
+            ctx.lineTo(pts[1].x * s, pts[1].y * s);
+          } else {
+            for (let i = 0; i < pts.length - 1; i++) {
+              const p0 = pts[Math.max(0, i - 1)];
+              const p1 = pts[i];
+              const p2 = pts[i + 1];
+              const p3 = pts[Math.min(pts.length - 1, i + 2)];
+              ctx.bezierCurveTo(
+                (p1.x + (p2.x - p0.x) / 6) * s, (p1.y + (p2.y - p0.y) / 6) * s,
+                (p2.x - (p3.x - p1.x) / 6) * s, (p2.y - (p3.y - p1.y) / 6) * s,
+                p2.x * s, p2.y * s
+              );
+            }
+          }
+          break;
+        }
+      }
+
+      ctx.stroke();
+      if (rot !== 0) ctx.restore();
+    }
+
+    function drawRoundedPolygon(pts, radius, s) {
+      const n = pts.length;
+      for (let i = 0; i < n; i++) {
+        const prev = pts[(i - 1 + n) % n];
+        const curr = pts[i];
+        const next = pts[(i + 1) % n];
+        const d1x = prev.x - curr.x, d1y = prev.y - curr.y;
+        const d2x = next.x - curr.x, d2y = next.y - curr.y;
+        const len1 = Math.hypot(d1x, d1y), len2 = Math.hypot(d2x, d2y);
+        const maxR = Math.min(len1, len2) * 0.45;
+        const r = Math.min(radius, maxR);
+        const p1x = curr.x + (d1x / len1) * r, p1y = curr.y + (d1y / len1) * r;
+        const p2x = curr.x + (d2x / len2) * r, p2y = curr.y + (d2y / len2) * r;
+        if (i === 0) ctx.moveTo(p1x * s, p1y * s);
+        else ctx.lineTo(p1x * s, p1y * s);
+        ctx.quadraticCurveTo(curr.x * s, curr.y * s, p2x * s, p2y * s);
+      }
+      ctx.closePath();
+    }
+
+    function shapeCenter(pts) {
+      let x = 0, y = 0;
+      for (const p of pts) { x += p.x; y += p.y; }
+      return { x: x / pts.length, y: y / pts.length };
+    }
+
+    function draw() {
+      const pRaw = readP();
+      const pw = pRaw.cw * PX_PER_INCH;
+      const ph = pRaw.ch * PX_PER_INCH;
+      canvas.width = pw;
+      canvas.height = ph;
+
+      const maxW = window.innerWidth - 360;
+      const maxH = window.innerHeight - 48;
+      if (pw / ph > maxW / maxH) {
+        canvas.style.width = Math.min(pw, maxW) + 'px';
+        canvas.style.height = 'auto';
+      } else {
+        canvas.style.height = Math.min(ph, maxH) + 'px';
+        canvas.style.width = 'auto';
+      }
+
+      const vp = applyView(pRaw);
+      const paths = generatePaths(vp);
+      const z = vp._viewScale;
+      const ox = vp._viewOx;
+      const oy = vp._viewOy;
+      const realMargin = pRaw.margin;
+
+      ctx.clearRect(0, 0, pw, ph);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(0, 0, pw, ph);
+
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(realMargin * PX_PER_INCH, realMargin * PX_PER_INCH,
+        (pRaw.cw - realMargin * 2) * PX_PER_INCH, (pRaw.ch - realMargin * 2) * PX_PER_INCH);
+      ctx.clip();
+
+      ctx.save();
+      ctx.scale(z, z);
+      ctx.translate(-ox, -oy);
+
+      if (pRaw.fabric) {
+        ctx.fillStyle = '#e8ddd0';
+        ctx.fillRect(ox, oy, pRaw.cw / z, pRaw.ch / z);
+
+        for (const shape of paths) {
+          ctx.save();
+          ctx.strokeStyle = 'transparent';
+          ctx.fillStyle = '#ffffff';
+          if (shape.type === 'text') {
+            const s = PX_PER_INCH;
+            ctx.font = `${shape.fontSize * s}px "${shape.fontFamily}"`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(shape.text, shape.cx * s, shape.cy * s);
+          } else {
+            drawShape(shape, vp.rot);
+            ctx.fill();
+          }
+          ctx.restore();
+        }
+      }
+
+      ctx.strokeStyle = pRaw.fabric ? 'rgba(200, 60, 60, 0.4)' : '#cc2222';
+      ctx.lineWidth = (pRaw.fabric ? 1 : 1.5) * (PX_PER_INCH / 96) / z;
+      ctx.lineJoin = 'round';
+      ctx.lineCap = 'round';
+
+      for (const shape of paths) {
+        drawShape(shape, vp.rot);
+      }
+
+      if (patternOrigin && ['circuit','fissure'].includes(pRaw.type)) {
+        const ox2 = patternOrigin.x * PX_PER_INCH;
+        const oy2 = patternOrigin.y * PX_PER_INCH;
+        const cr = 8 / z;
+        ctx.strokeStyle = '#4488ff';
+        ctx.lineWidth = 2 * (PX_PER_INCH / 96) / z;
+        ctx.setLineDash([]);
+        ctx.beginPath();
+        ctx.moveTo(ox2 - cr, oy2); ctx.lineTo(ox2 + cr, oy2);
+        ctx.moveTo(ox2, oy2 - cr); ctx.lineTo(ox2, oy2 + cr);
+        ctx.stroke();
+        ctx.beginPath();
+        ctx.arc(ox2, oy2, cr * 0.6, 0, Math.PI * 2);
+        ctx.stroke();
+      }
+
+      ctx.restore();
+      ctx.restore();
+
+      if (pRaw.border) {
+        ctx.strokeStyle = pRaw.fabric ? 'rgba(200, 60, 60, 0.4)' : '#cc2222';
+        ctx.lineWidth = 1.5 * (PX_PER_INCH / 96);
+        ctx.strokeRect(
+          realMargin * PX_PER_INCH, realMargin * PX_PER_INCH,
+          (pRaw.cw - realMargin * 2) * PX_PER_INCH, (pRaw.ch - realMargin * 2) * PX_PER_INCH
+        );
+      }
+
+      if (!pRaw.fabric) {
+        ctx.setLineDash([4 * (PX_PER_INCH / 96), 4 * (PX_PER_INCH / 96)]);
+        ctx.strokeStyle = '#ccc';
+        ctx.lineWidth = 0.5 * (PX_PER_INCH / 96);
+        ctx.strokeRect(0, 0, pw, ph);
+        if (realMargin > 0) {
+          ctx.strokeRect(
+            realMargin * PX_PER_INCH, realMargin * PX_PER_INCH,
+            (pRaw.cw - realMargin * 2) * PX_PER_INCH, (pRaw.ch - realMargin * 2) * PX_PER_INCH
+          );
+        }
+        ctx.setLineDash([]);
+      }
+    }
+
+    // ── SVG Export ──
+
+    function shapeToSVG(shape, rot) {
+      function wrapRot(inner, cx, cy) {
+        if (rot === 0) return inner;
+        return `<g transform="rotate(${rot * 180 / Math.PI},${cx},${cy})">${inner}</g>`;
+      }
+
+      function getCenter() {
+        if (shape.cx !== undefined) return { x: shape.cx, y: shape.cy };
+        if (shape.pts) return shapeCenter(shape.pts);
+        if (shape.x1 !== undefined) return { x: (shape.x1 + shape.x2) / 2, y: (shape.y1 + shape.y2) / 2 };
+        return { x: 0, y: 0 };
+      }
+
+      const sw = 'stroke="red" stroke-width="0.01" fill="none" stroke-linecap="round" stroke-linejoin="round"';
+      const c = getCenter();
+
+      switch (shape.type) {
+        case 'circle':
+          return wrapRot(`<circle cx="${shape.cx}" cy="${shape.cy}" r="${shape.r}" ${sw}/>`, c.x, c.y);
+
+        case 'polygon': {
+          const d = shape.pts.map((p, i) => `${i === 0 ? 'M' : 'L'}${p.x},${p.y}`).join(' ') + ' Z';
+          return wrapRot(`<path d="${d}" ${sw}/>`, c.x, c.y);
+        }
+
+        case 'rounded-polygon': {
+          const pts = shape.pts; const radius = shape.radius; const n = pts.length;
+          let segs = [];
+          for (let i = 0; i < n; i++) {
+            const prev = pts[(i - 1 + n) % n], curr = pts[i], next = pts[(i + 1) % n];
+            const d1x = prev.x - curr.x, d1y = prev.y - curr.y;
+            const d2x = next.x - curr.x, d2y = next.y - curr.y;
+            const len1 = Math.hypot(d1x, d1y), len2 = Math.hypot(d2x, d2y);
+            const maxR = Math.min(len1, len2) * 0.45;
+            const r = Math.min(radius, maxR);
+            const p1x = curr.x + (d1x / len1) * r, p1y = curr.y + (d1y / len1) * r;
+            const p2x = curr.x + (d2x / len2) * r, p2y = curr.y + (d2y / len2) * r;
+            segs.push(i === 0 ? `M${p1x},${p1y}` : `L${p1x},${p1y}`);
+            segs.push(`Q${curr.x},${curr.y} ${p2x},${p2y}`);
+          }
+          segs.push('Z');
+          return wrapRot(`<path d="${segs.join(' ')}" ${sw}/>`, c.x, c.y);
+        }
+
+        case 'arc': {
+          const sx = shape.cx + Math.cos(shape.startA) * shape.r;
+          const sy = shape.cy + Math.sin(shape.startA) * shape.r;
+          const ex = shape.cx + Math.cos(shape.endA) * shape.r;
+          const ey = shape.cy + Math.sin(shape.endA) * shape.r;
+          return wrapRot(`<path d="M${sx},${sy} A${shape.r},${shape.r} 0 0 1 ${ex},${ey}" ${sw}/>`, c.x, c.y);
+        }
+
+        case 'line':
+          return wrapRot(`<line x1="${shape.x1}" y1="${shape.y1}" x2="${shape.x2}" y2="${shape.y2}" ${sw}/>`, c.x, c.y);
+
+        case 'petal': {
+          const { cx: px, cy: py, r: pr } = shape;
+          let segs = [];
+          for (let i = 0; i < 4; i++) {
+            const a = (Math.PI * 2 / 4) * i;
+            const a1 = a - 0.5, a2 = a + 0.5;
+            const tipX = px + Math.cos(a) * pr, tipY = py + Math.sin(a) * pr;
+            if (i === 0) segs.push(`M${px},${py}`);
+            segs.push(`Q${px + Math.cos(a1) * pr * 0.6},${py + Math.sin(a1) * pr * 0.6} ${tipX},${tipY}`);
+            segs.push(`Q${px + Math.cos(a2) * pr * 0.6},${py + Math.sin(a2) * pr * 0.6} ${px},${py}`);
+          }
+          return wrapRot(`<path d="${segs.join(' ')}" ${sw}/>`, px, py);
+        }
+
+        case 'smooth-closed': {
+          const pts = shape.pts; const n = pts.length;
+          if (n < 3) return '';
+          let segs = [`M${(pts[0].x + pts[1].x) / 2},${(pts[0].y + pts[1].y) / 2}`];
+          for (let i = 0; i < n; i++) {
+            const curr = pts[i], next = pts[(i + 1) % n];
+            segs.push(`Q${curr.x},${curr.y} ${(curr.x + next.x) / 2},${(curr.y + next.y) / 2}`);
+          }
+          segs.push('Z');
+          return wrapRot(`<path d="${segs.join(' ')}" ${sw}/>`, c.x, c.y);
+        }
+
+        case 'smooth-open': {
+          const pts = shape.pts;
+          if (pts.length < 2) return '';
+          let segs = [`M${pts[0].x},${pts[0].y}`];
+          if (pts.length === 2) {
+            segs.push(`L${pts[1].x},${pts[1].y}`);
+          } else {
+            for (let i = 0; i < pts.length - 1; i++) {
+              const p0 = pts[Math.max(0, i - 1)], p1 = pts[i], p2 = pts[i + 1], p3 = pts[Math.min(pts.length - 1, i + 2)];
+              segs.push(`C${p1.x + (p2.x - p0.x) / 6},${p1.y + (p2.y - p0.y) / 6} ${p2.x - (p3.x - p1.x) / 6},${p2.y - (p3.y - p1.y) / 6} ${p2.x},${p2.y}`);
+            }
+          }
+          return wrapRot(`<path d="${segs.join(' ')}" ${sw}/>`, c.x, c.y);
+        }
+        case 'text': {
+          const ts = `font-family="${shape.fontFamily}" font-size="${shape.fontSize}" text-anchor="middle" dominant-baseline="central" stroke="red" stroke-width="0.01" fill="none"`;
+          return wrapRot(`<text x="${shape.cx}" y="${shape.cy}" ${ts}>${shape.text}</text>`, shape.cx, shape.cy);
+        }
+      }
+      return '';
+    }
+
+    document.getElementById('btnExportSVG').addEventListener('click', () => {
+      const pRaw = readP();
+      const vp = applyView(pRaw);
+      const paths = generatePaths(vp);
+      const z = vp._viewScale;
+      const ox = vp._viewOx;
+      const oy = vp._viewOy;
+      const rm = pRaw.margin;
+
+      let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${pRaw.cw}in" height="${pRaw.ch}in" viewBox="0 0 ${pRaw.cw} ${pRaw.ch}">\n`;
+      svg += `<defs>\n`;
+      if (vp.type === 'matrix') {
+        svg += `<style>@font-face { font-family: "Technology"; src: url("Technology.ttf") format("truetype"); }</style>\n`;
+      }
+      svg += `<clipPath id="margin"><rect x="${rm}" y="${rm}" width="${pRaw.cw - rm * 2}" height="${pRaw.ch - rm * 2}"/></clipPath>\n</defs>\n`;
+      svg += `<g clip-path="url(#margin)">\n`;
+      svg += `<g transform="scale(${z}) translate(${-ox},${-oy})">\n`;
+
+      for (const shape of paths) {
+        svg += shapeToSVG(shape, vp.rot) + '\n';
+      }
+      svg += `</g>\n</g>\n`;
+
+      if (pRaw.border) {
+        svg += `<rect x="${rm}" y="${rm}" width="${pRaw.cw - rm * 2}" height="${pRaw.ch - rm * 2}" fill="none" stroke="red" stroke-width="0.01"/>\n`;
+      }
+      svg += `</svg>`;
+
+      const blob = new Blob([svg], { type: 'image/svg+xml' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `lasercut-${pRaw.type}-${pRaw.cw}x${pRaw.ch}in.svg`;
+      a.click();
+      URL.revokeObjectURL(url);
+    });
+
+    document.getElementById('btnExportPNG').addEventListener('click', () => {
+      const a = document.createElement('a');
+      a.href = canvas.toDataURL('image/png');
+      a.download = 'lasercut-pattern.png';
+      a.click();
+    });
+
+    // ── Control visibility ──
+
+    function updateControlVisibility() {
+      const type = C.patternType.value;
+      document.getElementById('pointsControl').style.display = type === 'stars' ? '' : 'none';
+      document.getElementById('cornerControl').style.display =
+        ['diamonds','hexagons','stars','crosses'].includes(type) ? '' : 'none';
+      document.getElementById('organicControl').style.display =
+        ['voronoi','waves','teardrops','crescents','dna','dragonscales','channels','matrix','circuit','fissure'].includes(type) ? '' : 'none';
+      document.getElementById('voronoiControls').style.display =
+        type === 'voronoi' ? '' : 'none';
+      document.getElementById('matrixControls').style.display =
+        type === 'matrix' ? '' : 'none';
+      document.getElementById('mirrorControls').style.display =
+        ['circuit','fissure'].includes(type) ? '' : 'none';
+      document.getElementById('fissureControls').style.display =
+        type === 'fissure' ? '' : 'none';
+    }
+
+    // ── Listeners ──
+
+    ids.forEach(id => {
+      C[id].addEventListener('input', () => {
+        const v = document.getElementById('v-' + id);
+        if (v) v.textContent = C[id].value;
+        if (id === 'patternType') updateControlVisibility();
+        draw();
+      });
+      C[id].addEventListener('change', () => {
+        if (id === 'patternType') updateControlVisibility();
+        draw();
+      });
+    });
+
+    document.getElementById('btnResetView').addEventListener('click', () => {
+      C.viewZoom.value = 100; document.getElementById('v-viewZoom').textContent = '100';
+      C.viewPanX.value = 0; document.getElementById('v-viewPanX').textContent = '0';
+      C.viewPanY.value = 0; document.getElementById('v-viewPanY').textContent = '0';
+      draw();
+    });
+
+    canvas.addEventListener('click', (e) => {
+      const type = C.patternType.value;
+      if (!['circuit', 'fissure'].includes(type)) return;
+      const rect = canvas.getBoundingClientRect();
+      const scaleX = canvas.width / rect.width;
+      const scaleY = canvas.height / rect.height;
+      const px = (e.clientX - rect.left) * scaleX;
+      const py = (e.clientY - rect.top) * scaleY;
+      const pRaw = readP();
+      const vp = applyView(pRaw);
+      const inchX = px / PX_PER_INCH / vp._viewScale + vp._viewOx;
+      const inchY = py / PX_PER_INCH / vp._viewScale + vp._viewOy;
+      patternOrigin = { x: inchX, y: inchY };
+      document.getElementById('originLabel').textContent =
+        `Origin: ${inchX.toFixed(1)}", ${inchY.toFixed(1)}"`;
+      document.getElementById('originLabel').style.opacity = '1';
+      document.getElementById('btnResetOrigin').style.display = '';
+      draw();
+    });
+
+    canvas.style.cursor = 'crosshair';
+
+    document.getElementById('btnResetOrigin').addEventListener('click', () => {
+      patternOrigin = null;
+      document.getElementById('originLabel').textContent = 'Click canvas to set origin';
+      document.getElementById('originLabel').style.opacity = '0.6';
+      document.getElementById('btnResetOrigin').style.display = 'none';
+      draw();
+    });
+
+    document.getElementById('btnRandomSeed').addEventListener('click', () => {
+      const newSeed = Math.floor(Math.random() * 99999) + 1;
+      C.vSeed.value = newSeed;
+      document.getElementById('v-vSeed').textContent = newSeed;
+      draw();
+    });
+
+    document.querySelectorAll('.control label span[id^="v-"]').forEach(span => {
+      if (span.style.display === 'none') return;
+      const sliderId = span.id.replace('v-', '');
+      const slider = C[sliderId];
+      if (!slider || slider.tagName !== 'INPUT' || slider.type !== 'range') return;
+
+      span.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.className = 'val-edit';
+        input.value = slider.value;
+        input.min = slider.min;
+        input.max = slider.max;
+        input.step = slider.step;
+        span.replaceWith(input);
+        input.focus();
+        input.select();
+
+        const commit = () => {
+          let v = parseFloat(input.value);
+          if (isNaN(v)) v = parseFloat(slider.value);
+          v = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), v));
+          slider.value = v;
+          const newSpan = document.createElement('span');
+          newSpan.id = span.id;
+          newSpan.textContent = v;
+          input.replaceWith(newSpan);
+          newSpan.addEventListener('click', span.onclick);
+          setupSpanEdit(newSpan, sliderId);
+          slider.dispatchEvent(new Event('input'));
+        };
+        input.addEventListener('blur', commit);
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+      });
+    });
+
+    function setupSpanEdit(span, sliderId) {
+      const slider = C[sliderId];
+      span.style.cursor = 'text';
+      span.addEventListener('click', () => {
+        const input = document.createElement('input');
+        input.type = 'number';
+        input.className = 'val-edit';
+        input.value = slider.value;
+        input.min = slider.min;
+        input.max = slider.max;
+        input.step = slider.step;
+        span.replaceWith(input);
+        input.focus();
+        input.select();
+
+        const commit = () => {
+          let v = parseFloat(input.value);
+          if (isNaN(v)) v = parseFloat(slider.value);
+          v = Math.max(parseFloat(slider.min), Math.min(parseFloat(slider.max), v));
+          slider.value = v;
+          const newSpan = document.createElement('span');
+          newSpan.id = span.id;
+          newSpan.textContent = v;
+          input.replaceWith(newSpan);
+          setupSpanEdit(newSpan, sliderId);
+          slider.dispatchEvent(new Event('input'));
+        };
+        input.addEventListener('blur', commit);
+        input.addEventListener('keydown', e => { if (e.key === 'Enter') input.blur(); });
+      });
+    }
+
+    window.addEventListener('resize', () => draw());
+    updateControlVisibility();
+    document.fonts.ready.then(() => draw());
+    draw();
+  </script>
+</body>
+</html>

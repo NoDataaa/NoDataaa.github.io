@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ASCII Art Generator</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: #0a0a0f;
+    color: #e0e0e0;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    min-height: 100vh;
+  }
+
+  .app {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 24px;
+  }
+
+  h1 {
+    font-size: 28px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    background: linear-gradient(135deg, #00ffa3, #00d4ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .subtitle {
+    color: #666;
+    font-size: 14px;
+    margin-bottom: 24px;
+  }
+
+  .controls {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 16px;
+    margin-bottom: 20px;
+  }
+
+  .control-group {
+    background: #13131a;
+    border: 1px solid #1e1e2e;
+    border-radius: 10px;
+    padding: 16px;
+  }
+
+  .control-group.full-width {
+    grid-column: 1 / -1;
+  }
+
+  .control-group label {
+    display: block;
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 1.2px;
+    color: #888;
+    margin-bottom: 8px;
+  }
+
+  .control-group select,
+  .control-group input[type="file"] {
+    width: 100%;
+    background: #0a0a0f;
+    border: 1px solid #2a2a3a;
+    color: #e0e0e0;
+    padding: 10px 12px;
+    border-radius: 6px;
+    font-size: 14px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .control-group select:focus,
+  .control-group input[type="file"]:focus {
+    border-color: #00ffa3;
+  }
+
+  .control-group select option { background: #0a0a0f; }
+
+  .slider-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .slider-row input[type="range"] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 6px;
+    background: #1e1e2e;
+    border-radius: 3px;
+    outline: none;
+  }
+
+  .slider-row input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 18px;
+    height: 18px;
+    background: #00ffa3;
+    border-radius: 50%;
+    cursor: pointer;
+    box-shadow: 0 0 8px rgba(0,255,163,0.4);
+  }
+
+  .slider-val {
+    min-width: 44px;
+    text-align: right;
+    font-size: 14px;
+    font-weight: 600;
+    color: #00ffa3;
+    font-family: 'Consolas', monospace;
+  }
+
+  .drop-zone {
+    border: 2px dashed #2a2a3a;
+    border-radius: 12px;
+    padding: 48px 24px;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.3s;
+    background: #0d0d14;
+    margin-bottom: 20px;
+  }
+
+  .drop-zone:hover, .drop-zone.drag-over {
+    border-color: #00ffa3;
+    background: rgba(0,255,163,0.03);
+  }
+
+  .drop-zone .icon { font-size: 36px; margin-bottom: 8px; }
+  .drop-zone .hint { color: #555; font-size: 13px; margin-top: 6px; }
+
+  .drop-zone input[type="file"] { display: none; }
+
+  .actions {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+  }
+
+  button {
+    padding: 10px 20px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+
+  .btn-primary {
+    background: linear-gradient(135deg, #00ffa3, #00d4ff);
+    color: #0a0a0f;
+  }
+
+  .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+  .btn-primary:disabled { opacity: 0.3; cursor: not-allowed; transform: none; }
+
+  .btn-secondary {
+    background: #1e1e2e;
+    color: #ccc;
+    border: 1px solid #2a2a3a;
+  }
+
+  .btn-secondary:hover { background: #282840; }
+
+  .output-wrap {
+    background: #0d0d14;
+    border: 1px solid #1e1e2e;
+    border-radius: 12px;
+    overflow: auto;
+    max-height: 80vh;
+    position: relative;
+  }
+
+  #asciiOutput {
+    padding: 16px;
+    white-space: pre;
+    font-family: 'Courier New', 'Consolas', monospace;
+    line-height: 1.0;
+    letter-spacing: 0px;
+    overflow-x: auto;
+    min-height: 100px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #999;
+    font-size: 12px;
+    user-select: all;
+  }
+
+  #asciiOutput.has-art {
+    display: block;
+    color: #e0e0e0;
+  }
+
+  .preview-row {
+    display: grid;
+    grid-template-columns: 200px 1fr;
+    gap: 20px;
+    align-items: start;
+  }
+
+  .preview-thumb {
+    background: #13131a;
+    border: 1px solid #1e1e2e;
+    border-radius: 10px;
+    padding: 8px;
+  }
+
+  .preview-thumb img {
+    width: 100%;
+    border-radius: 6px;
+    display: block;
+  }
+
+  .preview-thumb .no-img {
+    height: 120px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #444;
+    font-size: 13px;
+  }
+
+  .color-mode-row {
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .color-chip {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+    background: #1e1e2e;
+    color: #aaa;
+  }
+
+  .color-chip.active {
+    border-color: #00ffa3;
+    color: #00ffa3;
+    background: rgba(0,255,163,0.08);
+  }
+
+  .color-chip:hover:not(.active) { background: #282840; }
+
+  .style-cards {
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .style-card {
+    padding: 6px 14px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    cursor: pointer;
+    border: 2px solid transparent;
+    transition: all 0.2s;
+    background: #1e1e2e;
+    color: #aaa;
+    font-family: monospace;
+  }
+
+  .style-card.active {
+    border-color: #00d4ff;
+    color: #00d4ff;
+    background: rgba(0,212,255,0.08);
+  }
+
+  .style-card:hover:not(.active) { background: #282840; }
+
+  .stats {
+    display: flex;
+    gap: 16px;
+    padding: 10px 16px;
+    background: #0a0a0f;
+    border-top: 1px solid #1e1e2e;
+    font-size: 12px;
+    color: #555;
+    font-family: monospace;
+  }
+
+  canvas { display: none; }
+
+  @media (max-width: 768px) {
+    .controls { grid-template-columns: 1fr; }
+    .preview-row { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <h1>ASCII Art Generator</h1>
+  <p class="subtitle">Drop an image and convert it to ASCII art with multiple styles</p>
+
+  <div class="drop-zone" id="dropZone">
+    <div class="icon">&#128444;</div>
+    <div>Drop image here or click to upload</div>
+    <div class="hint">Supports JPG, PNG, GIF, WebP</div>
+    <input type="file" id="fileInput" accept="image/*">
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <label>Character Style</label>
+      <div class="style-cards" id="styleCards"></div>
+    </div>
+
+    <div class="control-group">
+      <label>Output Width (chars)</label>
+      <div class="slider-row">
+        <input type="range" id="widthSlider" min="20" max="300" value="100">
+        <span class="slider-val" id="widthVal">100</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>Font Size (px)</label>
+      <div class="slider-row">
+        <input type="range" id="fontSlider" min="4" max="20" value="8">
+        <span class="slider-val" id="fontVal">8</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>Brightness Threshold</label>
+      <div class="slider-row">
+        <input type="range" id="thresholdSlider" min="-100" max="100" value="0">
+        <span class="slider-val" id="thresholdVal">0</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>Contrast</label>
+      <div class="slider-row">
+        <input type="range" id="contrastSlider" min="50" max="300" value="100">
+        <span class="slider-val" id="contrastVal">100%</span>
+      </div>
+    </div>
+
+    <div class="control-group">
+      <label>Color Mode</label>
+      <div class="color-mode-row" id="colorModes"></div>
+    </div>
+  </div>
+
+  <div class="actions">
+    <button class="btn-primary" id="generateBtn" disabled>Generate ASCII</button>
+    <button class="btn-secondary" id="copyBtn">Copy to Clipboard</button>
+    <button class="btn-secondary" id="downloadBtn">Download .txt</button>
+    <button class="btn-secondary" id="downloadHtmlBtn">Download .html</button>
+  </div>
+
+  <div class="preview-row">
+    <div class="preview-thumb">
+      <div class="no-img" id="thumbPlaceholder">No image loaded</div>
+      <img id="thumbImg" style="display:none">
+    </div>
+    <div class="output-wrap">
+      <div id="asciiOutput">Upload an image to get started</div>
+      <div class="stats" id="stats" style="display:none">
+        <span id="statDims"></span>
+        <span id="statChars"></span>
+        <span id="statStyle"></span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<canvas id="canvas"></canvas>
+
+<script>
+const STYLES = {
+  standard:  { name: 'Standard',  chars: ' .:-=+*#%@' },
+  detailed:  { name: 'Detailed',  chars: ' .\'`^",:;Il!i><~+_-?][}{1)(|\\/tfjrxnuvczXYUJCLQ0OZmwqpdbkhao*#MW&8%B@$' },
+  blocks:    { name: 'Blocks',    chars: ' ░▒▓█' },
+  minimal:   { name: 'Minimal',   chars: ' .+#' },
+  binary:    { name: 'Binary',    chars: ' █' },
+  dots:      { name: 'Dots',      chars: ' ⠀⠄⠆⠖⠶⡶⣶⣿' },
+  arrows:    { name: 'Arrows',    chars: ' ·•←↑→↓◄►◆■' },
+  numeric:   { name: 'Numeric',   chars: ' 0123456789' },
+  braille:   { name: 'Braille',   chars: ' ⠁⠃⠇⠏⠟⠿⡿⣿' },
+  katakana:  { name: 'Katakana',  chars: ' ｡ｦｧｨｩｪｫｬｭｮｯ' },
+  emoji:     { name: 'Emoji',     chars: ['⬛','🟫','🟥','🟧','🟨','🟩','🟦','🟪','⬜'] },
+  inverted:  { name: 'Inverted',  chars: '@%#*+=-:. ' },
+};
+
+const COLOR_MODES = [
+  { id: 'mono', name: 'Mono' },
+  { id: 'green', name: 'Matrix' },
+  { id: 'amber', name: 'Amber' },
+  { id: 'color', name: 'Full Color' },
+  { id: 'grayscale', name: 'Grayscale' },
+];
+
+let currentStyle = 'standard';
+let currentColor = 'mono';
+let loadedImage = null;
+
+const $ = id => document.getElementById(id);
+const canvas = $('canvas');
+const ctx = canvas.getContext('2d', { willReadFrequently: true });
+
+function initUI() {
+  const styleContainer = $('styleCards');
+  Object.entries(STYLES).forEach(([key, s]) => {
+    const chip = document.createElement('div');
+    chip.className = 'style-card' + (key === currentStyle ? ' active' : '');
+    chip.textContent = s.name;
+    chip.dataset.key = key;
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.style-card').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      currentStyle = key;
+      if (loadedImage) generate();
+    });
+    styleContainer.appendChild(chip);
+  });
+
+  const colorContainer = $('colorModes');
+  COLOR_MODES.forEach(m => {
+    const chip = document.createElement('div');
+    chip.className = 'color-chip' + (m.id === currentColor ? ' active' : '');
+    chip.textContent = m.name;
+    chip.dataset.id = m.id;
+    chip.addEventListener('click', () => {
+      document.querySelectorAll('.color-chip').forEach(c => c.classList.remove('active'));
+      chip.classList.add('active');
+      currentColor = m.id;
+      if (loadedImage) generate();
+    });
+    colorContainer.appendChild(chip);
+  });
+}
+
+function bindEvents() {
+  const dropZone = $('dropZone');
+  const fileInput = $('fileInput');
+
+  dropZone.addEventListener('click', () => fileInput.click());
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    if (e.dataTransfer.files.length) loadFile(e.dataTransfer.files[0]);
+  });
+  fileInput.addEventListener('change', e => { if (e.target.files.length) loadFile(e.target.files[0]); });
+
+  $('widthSlider').addEventListener('input', e => {
+    $('widthVal').textContent = e.target.value;
+    if (loadedImage) generate();
+  });
+  $('fontSlider').addEventListener('input', e => {
+    $('fontVal').textContent = e.target.value;
+    $('asciiOutput').style.fontSize = e.target.value + 'px';
+  });
+  $('thresholdSlider').addEventListener('input', e => {
+    $('thresholdVal').textContent = e.target.value;
+    if (loadedImage) generate();
+  });
+  $('contrastSlider').addEventListener('input', e => {
+    $('contrastVal').textContent = e.target.value + '%';
+    if (loadedImage) generate();
+  });
+
+  $('generateBtn').addEventListener('click', generate);
+  $('copyBtn').addEventListener('click', copyToClipboard);
+  $('downloadBtn').addEventListener('click', downloadTxt);
+  $('downloadHtmlBtn').addEventListener('click', downloadHtml);
+}
+
+function loadFile(file) {
+  if (!file.type.startsWith('image/')) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const img = new Image();
+    img.onload = () => {
+      loadedImage = img;
+      $('thumbImg').src = e.target.result;
+      $('thumbImg').style.display = 'block';
+      $('thumbPlaceholder').style.display = 'none';
+      $('generateBtn').disabled = false;
+      generate();
+    };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+
+function generate() {
+  if (!loadedImage) return;
+
+  const targetWidth = parseInt($('widthSlider').value);
+  const threshold = parseInt($('thresholdSlider').value);
+  const contrast = parseInt($('contrastSlider').value) / 100;
+  const style = STYLES[currentStyle];
+  const chars = style.chars;
+
+  const aspectRatio = loadedImage.height / loadedImage.width;
+  const charAspect = 0.5;
+  const targetHeight = Math.round(targetWidth * aspectRatio * charAspect);
+
+  canvas.width = targetWidth;
+  canvas.height = targetHeight;
+  ctx.drawImage(loadedImage, 0, 0, targetWidth, targetHeight);
+
+  const imageData = ctx.getImageData(0, 0, targetWidth, targetHeight);
+  const pixels = imageData.data;
+
+  const output = $('asciiOutput');
+  const useColor = currentColor === 'color' || currentColor === 'grayscale';
+  let html = '';
+  let plainText = '';
+  let charCount = 0;
+
+  for (let y = 0; y < targetHeight; y++) {
+    for (let x = 0; x < targetWidth; x++) {
+      const idx = (y * targetWidth + x) * 4;
+      let r = pixels[idx], g = pixels[idx + 1], b = pixels[idx + 2];
+
+      const factor = contrast;
+      r = clamp(Math.round(128 + (r - 128) * factor) + threshold);
+      g = clamp(Math.round(128 + (g - 128) * factor) + threshold);
+      b = clamp(Math.round(128 + (b - 128) * factor) + threshold);
+
+      const brightness = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+
+      let charIndex;
+      if (Array.isArray(chars)) {
+        charIndex = Math.floor(brightness * (chars.length - 1));
+        charIndex = Math.max(0, Math.min(chars.length - 1, charIndex));
+      } else {
+        charIndex = Math.floor(brightness * (chars.length - 1));
+        charIndex = Math.max(0, Math.min(chars.length - 1, charIndex));
+      }
+
+      const ch = Array.isArray(chars) ? chars[charIndex] : chars[charIndex];
+      charCount++;
+
+      if (useColor) {
+        let cr, cg, cb;
+        if (currentColor === 'grayscale') {
+          const gray = Math.round(brightness * 255);
+          cr = cg = cb = gray;
+        } else {
+          cr = r; cg = g; cb = b;
+        }
+        html += `<span style="color:rgb(${cr},${cg},${cb})">${escapeHtml(ch)}</span>`;
+      } else {
+        html += escapeHtml(ch);
+      }
+      plainText += ch;
+    }
+    html += '\n';
+    plainText += '\n';
+  }
+
+  output.className = 'has-art';
+
+  let colorStyle = '';
+  if (currentColor === 'green') colorStyle = 'color: #00ff41;';
+  else if (currentColor === 'amber') colorStyle = 'color: #ffb000;';
+  else if (currentColor === 'mono') colorStyle = 'color: #e0e0e0;';
+
+  output.style.cssText = `font-size:${$('fontSlider').value}px;${colorStyle}`;
+  output.innerHTML = html;
+  output.dataset.plain = plainText;
+
+  $('stats').style.display = 'flex';
+  $('statDims').textContent = `${targetWidth} × ${targetHeight} chars`;
+  $('statChars').textContent = `${charCount.toLocaleString()} characters`;
+  $('statStyle').textContent = `Style: ${style.name}`;
+}
+
+function clamp(v) { return Math.max(0, Math.min(255, v)); }
+
+function escapeHtml(ch) {
+  if (ch === '<') return '&lt;';
+  if (ch === '>') return '&gt;';
+  if (ch === '&') return '&amp;';
+  if (ch === '"') return '&quot;';
+  if (ch === ' ') return '&nbsp;';
+  return ch;
+}
+
+function copyToClipboard() {
+  const plain = $('asciiOutput').dataset.plain;
+  if (!plain) return;
+  navigator.clipboard.writeText(plain).then(() => {
+    const btn = $('copyBtn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = 'Copy to Clipboard', 1500);
+  });
+}
+
+function downloadTxt() {
+  const plain = $('asciiOutput').dataset.plain;
+  if (!plain) return;
+  const blob = new Blob([plain], { type: 'text/plain' });
+  downloadBlob(blob, 'ascii-art.txt');
+}
+
+function downloadHtml() {
+  const output = $('asciiOutput');
+  if (!output.dataset.plain) return;
+  const fontSize = $('fontSlider').value;
+  const htmlContent = `<!DOCTYPE html>
+<html><head><meta charset="UTF-8"><title>ASCII Art</title>
+<style>
+body { background: #0a0a0f; margin: 0; padding: 20px; }
+pre { font-family: 'Courier New', monospace; font-size: ${fontSize}px; line-height: 1.0; letter-spacing: 0; color: #e0e0e0; }
+</style></head><body><pre>${output.innerHTML}</pre></body></html>`;
+  const blob = new Blob([htmlContent], { type: 'text/html' });
+  downloadBlob(blob, 'ascii-art.html');
+}
+
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+initUI();
+bindEvents();
+</script>
+</body>
+</html>

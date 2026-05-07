@@ -1,0 +1,901 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Topographic Pattern Generator</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body { height: 100%; overflow: hidden; }
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+    background: #0a0a0a;
+    color: #e8e8e8;
+  }
+  canvas#c { display: block; cursor: crosshair; }
+
+  #panel {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    width: 280px;
+    max-height: calc(100vh - 32px);
+    overflow-y: auto;
+    background: rgba(18, 18, 18, 0.88);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 1px solid #262626;
+    border-radius: 12px;
+    padding: 18px;
+    font-size: 12px;
+    box-shadow: 0 8px 32px rgba(0,0,0,0.4);
+  }
+  #panel::-webkit-scrollbar { width: 6px; }
+  #panel::-webkit-scrollbar-thumb { background: #333; border-radius: 3px; }
+
+  .section-title {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: #6a6a6a;
+    margin: 16px 0 10px;
+  }
+  .section-title:first-child { margin-top: 0; }
+
+  .row { margin-bottom: 12px; }
+  .row label {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 5px;
+    font-size: 11px;
+    color: #999;
+  }
+  .row label .val {
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+    font-size: 11px;
+  }
+
+  input[type=range] {
+    width: 100%;
+    -webkit-appearance: none;
+    appearance: none;
+    height: 2px;
+    background: #2c2c2c;
+    border-radius: 1px;
+    outline: none;
+  }
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    appearance: none;
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    cursor: pointer;
+    transition: transform 0.1s;
+  }
+  input[type=range]::-webkit-slider-thumb:hover { transform: scale(1.2); }
+  input[type=range]::-moz-range-thumb {
+    width: 12px;
+    height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    cursor: pointer;
+    border: none;
+  }
+
+  .color-row { display: flex; gap: 8px; align-items: center; }
+  input[type=color] {
+    width: 36px;
+    height: 24px;
+    border: 1px solid #333;
+    background: transparent;
+    cursor: pointer;
+    padding: 0;
+    border-radius: 4px;
+  }
+  input[type=color]::-webkit-color-swatch-wrapper { padding: 2px; }
+  input[type=color]::-webkit-color-swatch { border: none; border-radius: 2px; }
+
+  button {
+    width: 100%;
+    padding: 8px 10px;
+    background: #1e1e1e;
+    color: #ddd;
+    border: 1px solid #2e2e2e;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 11px;
+    font-family: inherit;
+    margin-bottom: 6px;
+    transition: all 0.15s;
+  }
+  button:hover { background: #262626; border-color: #404040; color: #fff; }
+  button.primary { background: #fff; color: #000; border-color: #fff; }
+  button.primary:hover { background: #e0e0e0; }
+
+  .check {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    cursor: pointer;
+    color: #aaa;
+    font-size: 11px;
+  }
+  .check input { accent-color: #fff; }
+
+  .hint {
+    font-size: 10px;
+    color: #5a5a5a;
+    line-height: 1.6;
+    margin-top: 14px;
+    padding-top: 14px;
+    border-top: 1px solid #1f1f1f;
+  }
+  .hint kbd {
+    display: inline-block;
+    padding: 1px 5px;
+    background: #222;
+    border: 1px solid #333;
+    border-radius: 3px;
+    font-family: ui-monospace, monospace;
+    font-size: 9px;
+    color: #bbb;
+  }
+
+  .source-count {
+    color: #fff;
+    font-variant-numeric: tabular-nums;
+  }
+
+  select {
+    width: 100%;
+    padding: 6px 8px;
+    background: #1e1e1e;
+    color: #ddd;
+    border: 1px solid #2e2e2e;
+    border-radius: 6px;
+    font-size: 11px;
+    font-family: inherit;
+    cursor: pointer;
+    outline: none;
+  }
+</style>
+</head>
+<body>
+  <canvas id="c"></canvas>
+
+  <div id="panel">
+    <div class="section-title">Noise</div>
+
+    <div class="row">
+      <label>Scale <span class="val" id="scaleV">220</span></label>
+      <input type="range" id="scale" min="40" max="800" value="220" step="1">
+    </div>
+
+    <div class="row">
+      <label>Octaves <span class="val" id="octV">4</span></label>
+      <input type="range" id="oct" min="1" max="7" value="4" step="1">
+    </div>
+
+    <div class="row">
+      <label>Roughness <span class="val" id="roughV">0.50</span></label>
+      <input type="range" id="rough" min="0.1" max="0.9" value="0.5" step="0.01">
+    </div>
+
+    <div class="row">
+      <label>Seed <span class="val" id="seedV">1</span></label>
+      <input type="range" id="seed" min="1" max="999" value="1" step="1">
+    </div>
+
+    <div class="section-title">Contours</div>
+
+    <div class="row">
+      <label>Interval <span class="val" id="intvV">0.08</span></label>
+      <input type="range" id="intv" min="0.01" max="0.30" value="0.08" step="0.005">
+    </div>
+
+    <div class="row">
+      <label>Line Width <span class="val" id="lwV">1.0</span></label>
+      <input type="range" id="lw" min="0.3" max="4.0" value="1.0" step="0.1">
+    </div>
+
+    <div class="row">
+      <label>Resolution <span class="val" id="resV">5</span></label>
+      <input type="range" id="res" min="2" max="12" value="5" step="1">
+    </div>
+
+    <div class="row">
+      <label class="check">
+        <input type="checkbox" id="elev"> Color by elevation
+      </label>
+    </div>
+
+    <div class="section-title">Sources</div>
+
+    <div class="row">
+      <label>Strength <span class="val" id="strV">0.45</span></label>
+      <input type="range" id="str" min="-1.0" max="1.0" value="0.45" step="0.01">
+    </div>
+
+    <div class="row">
+      <label>Radius <span class="val" id="radV">180</span></label>
+      <input type="range" id="rad" min="40" max="600" value="180" step="1">
+    </div>
+
+    <div class="row">
+      <label>Falloff <span class="val" id="falV">2.0</span></label>
+      <input type="range" id="fal" min="0.5" max="6.0" value="2.0" step="0.1">
+    </div>
+
+    <div class="row">
+      <label class="check">
+        <input type="checkbox" id="showPts" checked> Show source markers
+      </label>
+    </div>
+
+    <button id="clear">Clear sources (<span class="source-count" id="srcCount">0</span>)</button>
+
+    <div class="section-title">Color</div>
+
+    <div class="row color-row">
+      <input type="color" id="bg" value="#0d1117">
+      <span style="font-size:11px;color:#999;">Background</span>
+    </div>
+    <div class="row color-row">
+      <input type="color" id="line" value="#e8e8e8">
+      <span style="font-size:11px;color:#999;">Line</span>
+    </div>
+    <div class="row color-row">
+      <input type="color" id="lineHi" value="#ffae5b">
+      <span style="font-size:11px;color:#999;">High elev.</span>
+    </div>
+
+    <div class="section-title">Animation</div>
+
+    <div class="row">
+      <label class="check"><input type="checkbox" id="aDrift"> Drift <span style="color:#666;margin-left:auto;">pan noise</span></label>
+    </div>
+    <div class="row">
+      <label class="check"><input type="checkbox" id="aEvolve"> Evolve <span style="color:#666;margin-left:auto;">morph noise</span></label>
+    </div>
+    <div class="row">
+      <label class="check"><input type="checkbox" id="aFlow"> Flow <span style="color:#666;margin-left:auto;">contours roll</span></label>
+    </div>
+    <div class="row">
+      <label class="check"><input type="checkbox" id="aPulse"> Pulse <span style="color:#666;margin-left:auto;">sources breathe</span></label>
+    </div>
+
+    <div class="row">
+      <label>Speed <span class="val" id="aSpeedV">1.00</span></label>
+      <input type="range" id="aSpeed" min="0.05" max="3.0" value="1.0" step="0.05">
+    </div>
+
+    <button id="playPause" class="primary">Play</button>
+
+    <div class="section-title">Actions</div>
+    <button id="reseed">New random seed</button>
+    <button id="export">Export PNG</button>
+    <button id="exportSVG" class="primary">Export SVG</button>
+
+    <div class="hint">
+      <strong style="color:#aaa;">Click</strong> to place a source point.<br>
+      <strong style="color:#aaa;">Right-click</strong> a marker to remove it.<br>
+      <strong style="color:#aaa;">Shift+drag</strong> a marker to move it.<br>
+      <kbd>Space</kbd> play/pause · <kbd>R</kbd> reseed · <kbd>C</kbd> clear · <kbd>S</kbd> PNG · <kbd>V</kbd> SVG
+    </div>
+  </div>
+
+<script>
+"use strict";
+
+// ---------- Perlin gradient noise with seedable permutation ----------
+class Noise {
+  constructor(seed = 1) { this.setSeed(seed); }
+  setSeed(seed) {
+    this.seed = seed;
+    const p = new Uint8Array(256);
+    for (let i = 0; i < 256; i++) p[i] = i;
+    let s = (seed * 2654435761) >>> 0;
+    for (let i = 255; i > 0; i--) {
+      s = (s * 1664525 + 1013904223) >>> 0;
+      const j = s % (i + 1);
+      const t = p[i]; p[i] = p[j]; p[j] = t;
+    }
+    this.perm = new Uint8Array(512);
+    for (let i = 0; i < 512; i++) this.perm[i] = p[i & 255];
+  }
+  fade(t) { return t * t * t * (t * (t * 6 - 15) + 10); }
+  lerp(a, b, t) { return a + t * (b - a); }
+  grad(hash, x, y) {
+    const h = hash & 7;
+    const u = h < 4 ? x : y;
+    const v = h < 4 ? y : x;
+    return ((h & 1) ? -u : u) + ((h & 2) ? -2 * v : 2 * v);
+  }
+  noise2D(x, y) {
+    const X = Math.floor(x) & 255;
+    const Y = Math.floor(y) & 255;
+    const xf = x - Math.floor(x);
+    const yf = y - Math.floor(y);
+    const u = this.fade(xf), v = this.fade(yf);
+    const A = this.perm[X] + Y;
+    const B = this.perm[X + 1] + Y;
+    return this.lerp(
+      this.lerp(this.grad(this.perm[A],     xf,     yf),
+                this.grad(this.perm[B],     xf - 1, yf), u),
+      this.lerp(this.grad(this.perm[A + 1], xf,     yf - 1),
+                this.grad(this.perm[B + 1], xf - 1, yf - 1), u),
+      v);
+  }
+  fbm(x, y, octaves, persistence) {
+    let total = 0, amp = 1, freq = 1, max = 0;
+    for (let i = 0; i < octaves; i++) {
+      total += this.noise2D(x * freq, y * freq) * amp;
+      max += amp;
+      amp *= persistence;
+      freq *= 2;
+    }
+    return total / max;
+  }
+  grad3(hash, x, y, z) {
+    const h = hash & 15;
+    const u = h < 8 ? x : y;
+    const v = h < 4 ? y : (h === 12 || h === 14 ? x : z);
+    return ((h & 1) ? -u : u) + ((h & 2) ? -v : v);
+  }
+  noise3D(x, y, z) {
+    const X = Math.floor(x) & 255;
+    const Y = Math.floor(y) & 255;
+    const Z = Math.floor(z) & 255;
+    const xf = x - Math.floor(x);
+    const yf = y - Math.floor(y);
+    const zf = z - Math.floor(z);
+    const u = this.fade(xf), v = this.fade(yf), w = this.fade(zf);
+    const A  = this.perm[X]     + Y;
+    const AA = this.perm[A]     + Z;
+    const AB = this.perm[A + 1] + Z;
+    const B  = this.perm[X + 1] + Y;
+    const BA = this.perm[B]     + Z;
+    const BB = this.perm[B + 1] + Z;
+    return this.lerp(
+      this.lerp(
+        this.lerp(this.grad3(this.perm[AA],     xf,     yf,     zf),
+                  this.grad3(this.perm[BA],     xf - 1, yf,     zf), u),
+        this.lerp(this.grad3(this.perm[AB],     xf,     yf - 1, zf),
+                  this.grad3(this.perm[BB],     xf - 1, yf - 1, zf), u),
+        v),
+      this.lerp(
+        this.lerp(this.grad3(this.perm[AA + 1], xf,     yf,     zf - 1),
+                  this.grad3(this.perm[BA + 1], xf - 1, yf,     zf - 1), u),
+        this.lerp(this.grad3(this.perm[AB + 1], xf,     yf - 1, zf - 1),
+                  this.grad3(this.perm[BB + 1], xf - 1, yf - 1, zf - 1), u),
+        v),
+      w);
+  }
+  fbm3D(x, y, z, octaves, persistence) {
+    let total = 0, amp = 1, freq = 1, max = 0;
+    for (let i = 0; i < octaves; i++) {
+      total += this.noise3D(x * freq, y * freq, z * freq) * amp;
+      max += amp;
+      amp *= persistence;
+      freq *= 2;
+    }
+    return total / max;
+  }
+}
+
+// ---------- Marching squares contour extractor ----------
+// Index = 4-bit mask with TL=8, TR=4, BR=2, BL=1 (bit set if corner > level).
+// Edge IDs: 0=top (TL-TR), 1=right (TR-BR), 2=bottom (BL-BR), 3=left (TL-BL).
+// Each entry lists segment endpoint pairs.
+const EDGES = [
+  [],                        // 0000
+  [[3, 2]],                  // 0001 BL above
+  [[1, 2]],                  // 0010 BR above
+  [[3, 1]],                  // 0011 BR+BL
+  [[0, 1]],                  // 0100 TR above
+  [[0, 1], [2, 3]],          // 0101 saddle TR+BL
+  [[0, 2]],                  // 0110 TR+BR
+  [[3, 0]],                  // 0111 TR+BR+BL
+  [[0, 3]],                  // 1000 TL above
+  [[0, 2]],                  // 1001 TL+BL
+  [[0, 3], [1, 2]],          // 1010 saddle TL+BR
+  [[0, 1]],                  // 1011 TL+BR+BL
+  [[3, 1]],                  // 1100 TL+TR
+  [[1, 2]],                  // 1101 TL+TR+BL
+  [[2, 3]],                  // 1110 TL+TR+BR
+  []                         // 1111
+];
+
+// ---------- App state ----------
+const canvas = document.getElementById('c');
+const ctx = canvas.getContext('2d');
+
+const noise = new Noise(1);
+let sources = []; // {x, y, strength, radius, falloff}
+let field = null; // Float32Array heightfield (cols*rows)
+let cols = 0, rows = 0;
+let cellSize = 5;
+let dpr = Math.min(window.devicePixelRatio || 1, 2);
+
+const params = {
+  scale: 220,
+  octaves: 4,
+  roughness: 0.5,
+  seed: 1,
+  interval: 0.08,
+  lineWidth: 1.0,
+  resolution: 5,
+  elev: false,
+  bg: '#0d1117',
+  line: '#e8e8e8',
+  lineHi: '#ffae5b',
+  defStrength: 0.45,
+  defRadius: 180,
+  defFalloff: 2.0,
+  showPts: true
+};
+
+const anim = {
+  playing: false,
+  drift: false,
+  evolve: false,
+  flow: false,
+  pulse: false,
+  speed: 1.0,
+  t: 0,
+  lastFrame: 0,
+  rafId: 0
+};
+
+// ---------- Resize ----------
+function resize() {
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  canvas.width = Math.floor(w * dpr);
+  canvas.height = Math.floor(h * dpr);
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  rebuild();
+}
+
+// ---------- Build heightfield ----------
+function rebuild() {
+  cellSize = params.resolution;
+  cols = Math.ceil(canvas.width / cellSize) + 1;
+  rows = Math.ceil(canvas.height / cellSize) + 1;
+  if (!field || field.length !== cols * rows) field = new Float32Array(cols * rows);
+
+  const invScale = 1 / (params.scale * dpr);
+  const oct = params.octaves;
+  const rough = params.roughness;
+
+  // Animation offsets
+  const driftX = anim.drift ? anim.t * 60 * dpr : 0;
+  const driftY = anim.drift ? anim.t * 38 * dpr : 0;
+  const useEvolve = anim.evolve;
+  const z = anim.t * 0.35;
+
+  // Pre-compute pulsed source values
+  const srcCache = sources.map(src => {
+    const mul = anim.pulse ? (1 + 0.45 * Math.sin(anim.t * 1.6 + src.phase)) : 1;
+    return {
+      x: src.x * dpr,
+      y: src.y * dpr,
+      r: src.radius * dpr,
+      strength: src.strength * mul,
+      falloff: src.falloff
+    };
+  });
+
+  let i = 0;
+  for (let y = 0; y < rows; y++) {
+    const py = y * cellSize;
+    for (let x = 0; x < cols; x++) {
+      const px = x * cellSize;
+      const sx = (px + driftX) * invScale;
+      const sy = (py + driftY) * invScale;
+      let v = useEvolve
+        ? noise.fbm3D(sx, sy, z, oct, rough)
+        : noise.fbm(sx, sy, oct, rough);
+      for (let s = 0; s < srcCache.length; s++) {
+        const src = srcCache[s];
+        const dx = px - src.x;
+        const dy = py - src.y;
+        const d = Math.sqrt(dx * dx + dy * dy) / src.r;
+        v += src.strength * Math.exp(-Math.pow(d, src.falloff));
+      }
+      field[i++] = v;
+    }
+  }
+  draw();
+}
+
+// Recompute sources only without re-querying noise (fast updates when sources change)
+function rebuildSourcesOnly() {
+  // For correctness with parameter changes, just call full rebuild.
+  // Noise sampling is the dominant cost, so we keep this simple.
+  rebuild();
+}
+
+// ---------- Draw contours via marching squares ----------
+function lerp(a, b, t) { return a + t * (b - a); }
+
+function hexToRgb(hex) {
+  const v = parseInt(hex.slice(1), 16);
+  return [(v >> 16) & 255, (v >> 8) & 255, v & 255];
+}
+function rgbStr(r, g, b) { return `rgb(${r|0},${g|0},${b|0})`; }
+function mix(a, b, t) { return [lerp(a[0], b[0], t), lerp(a[1], b[1], t), lerp(a[2], b[2], t)]; }
+
+function fieldRange() {
+  let mn = Infinity, mx = -Infinity;
+  const step = 7;
+  for (let i = 0; i < field.length; i += step) {
+    const v = field[i];
+    if (v < mn) mn = v;
+    if (v > mx) mx = v;
+  }
+  return [mn - 0.01, mx + 0.01];
+}
+
+function levelList() {
+  const [mn, mx] = fieldRange();
+  const intv = params.interval;
+  const flowOffset = anim.flow ? ((anim.t * intv * 0.4) % intv) : 0;
+  const startK = Math.ceil((mn - flowOffset) / intv);
+  const endK = Math.floor((mx - flowOffset) / intv);
+  const levels = [];
+  for (let k = startK; k <= endK; k++) levels.push(k * intv + flowOffset);
+  return { levels, mn, mx };
+}
+
+function draw() {
+  ctx.fillStyle = params.bg;
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const { levels, mn, mx } = levelList();
+
+  ctx.lineWidth = params.lineWidth * dpr;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  const baseCol = hexToRgb(params.line);
+  const hiCol = hexToRgb(params.lineHi);
+
+  for (const level of levels) {
+    if (params.elev) {
+      const t = (level - mn) / (mx - mn);
+      const c = mix(baseCol, hiCol, Math.max(0, Math.min(1, t)));
+      ctx.strokeStyle = rgbStr(c[0], c[1], c[2]);
+    } else {
+      ctx.strokeStyle = params.line;
+    }
+    drawContour(level);
+  }
+
+  if (params.showPts && sources.length) {
+    for (const s of sources) {
+      const x = s.x * dpr;
+      const y = s.y * dpr;
+      ctx.beginPath();
+      ctx.arc(x, y, 6 * dpr, 0, Math.PI * 2);
+      ctx.fillStyle = s.strength >= 0 ? 'rgba(255,255,255,0.9)' : 'rgba(80,180,255,0.9)';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(x, y, 3 * dpr, 0, Math.PI * 2);
+      ctx.fillStyle = '#000';
+      ctx.fill();
+    }
+  }
+}
+
+function forEachContourSegment(level, emit) {
+  const cs = cellSize;
+  for (let y = 0; y < rows - 1; y++) {
+    const rowOff = y * cols;
+    const nextRowOff = rowOff + cols;
+    const py = y * cs;
+    for (let x = 0; x < cols - 1; x++) {
+      const tl = field[rowOff + x];
+      const tr = field[rowOff + x + 1];
+      const br = field[nextRowOff + x + 1];
+      const bl = field[nextRowOff + x];
+      let idx = 0;
+      if (tl > level) idx |= 8;
+      if (tr > level) idx |= 4;
+      if (br > level) idx |= 2;
+      if (bl > level) idx |= 1;
+      if (idx === 0 || idx === 15) continue;
+
+      const px = x * cs;
+      const segs = EDGES[idx];
+      for (let i = 0; i < segs.length; i++) {
+        const [a, b] = segs[i];
+        const pa = edgePoint(a, tl, tr, br, bl, level, px, py, cs);
+        const pb = edgePoint(b, tl, tr, br, bl, level, px, py, cs);
+        emit(pa[0], pa[1], pb[0], pb[1]);
+      }
+    }
+  }
+}
+
+function drawContour(level) {
+  ctx.beginPath();
+  forEachContourSegment(level, (x1, y1, x2, y2) => {
+    ctx.moveTo(x1, y1);
+    ctx.lineTo(x2, y2);
+  });
+  ctx.stroke();
+}
+
+function edgePoint(edge, tl, tr, br, bl, level, px, py, cs) {
+  let t, denom;
+  switch (edge) {
+    case 0: // top: TL -> TR
+      denom = tr - tl;
+      t = Math.abs(denom) < 1e-12 ? 0.5 : (level - tl) / denom;
+      return [px + clamp01(t) * cs, py];
+    case 1: // right: TR -> BR
+      denom = br - tr;
+      t = Math.abs(denom) < 1e-12 ? 0.5 : (level - tr) / denom;
+      return [px + cs, py + clamp01(t) * cs];
+    case 2: // bottom: BL -> BR
+      denom = br - bl;
+      t = Math.abs(denom) < 1e-12 ? 0.5 : (level - bl) / denom;
+      return [px + clamp01(t) * cs, py + cs];
+    case 3: // left: TL -> BL
+      denom = bl - tl;
+      t = Math.abs(denom) < 1e-12 ? 0.5 : (level - tl) / denom;
+      return [px, py + clamp01(t) * cs];
+  }
+}
+
+function clamp01(t) { return t < 0 ? 0 : (t > 1 ? 1 : t); }
+
+// ---------- Interaction ----------
+let dragSource = null;
+let dragOffset = [0, 0];
+
+canvas.addEventListener('mousedown', (e) => {
+  if (e.button !== 0) return;
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+
+  if (e.shiftKey) {
+    const hit = findSource(mx, my);
+    if (hit) {
+      dragSource = hit;
+      dragOffset = [mx - hit.x, my - hit.y];
+      return;
+    }
+  }
+  // Add new source
+  sources.push({
+    x: mx,
+    y: my,
+    strength: params.defStrength,
+    radius: params.defRadius,
+    falloff: params.defFalloff,
+    phase: Math.random() * Math.PI * 2
+  });
+  updateSrcCount();
+  rebuild();
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (!dragSource) return;
+  const rect = canvas.getBoundingClientRect();
+  dragSource.x = e.clientX - rect.left - dragOffset[0];
+  dragSource.y = e.clientY - rect.top - dragOffset[1];
+  rebuild();
+});
+
+window.addEventListener('mouseup', () => { dragSource = null; });
+
+canvas.addEventListener('contextmenu', (e) => {
+  e.preventDefault();
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const hit = findSource(mx, my);
+  if (hit) {
+    sources = sources.filter(s => s !== hit);
+    updateSrcCount();
+    rebuild();
+  }
+});
+
+function findSource(mx, my) {
+  let best = null, bestD = 14 * 14;
+  for (const s of sources) {
+    const dx = s.x - mx, dy = s.y - my;
+    const d = dx * dx + dy * dy;
+    if (d < bestD) { best = s; bestD = d; }
+  }
+  return best;
+}
+
+function updateSrcCount() {
+  document.getElementById('srcCount').textContent = sources.length;
+}
+
+// ---------- Bind controls ----------
+function bindRange(id, valId, key, parser, after) {
+  const el = document.getElementById(id);
+  const val = document.getElementById(valId);
+  el.addEventListener('input', () => {
+    const v = parser(el.value);
+    params[key] = v;
+    val.textContent = (typeof v === 'number' && !Number.isInteger(v)) ? v.toFixed(2) : v;
+    if (after) after();
+  });
+}
+
+bindRange('scale', 'scaleV', 'scale', parseFloat, rebuild);
+bindRange('oct', 'octV', 'octaves', parseInt, rebuild);
+bindRange('rough', 'roughV', 'roughness', parseFloat, rebuild);
+bindRange('seed', 'seedV', 'seed', parseInt, () => { noise.setSeed(params.seed); rebuild(); });
+bindRange('intv', 'intvV', 'interval', parseFloat, draw);
+bindRange('lw', 'lwV', 'lineWidth', parseFloat, draw);
+bindRange('res', 'resV', 'resolution', parseInt, rebuild);
+bindRange('str', 'strV', 'defStrength', parseFloat, null);
+bindRange('rad', 'radV', 'defRadius', parseFloat, null);
+bindRange('fal', 'falV', 'defFalloff', parseFloat, null);
+
+document.getElementById('elev').addEventListener('change', e => {
+  params.elev = e.target.checked; draw();
+});
+document.getElementById('showPts').addEventListener('change', e => {
+  params.showPts = e.target.checked; draw();
+});
+document.getElementById('bg').addEventListener('input', e => { params.bg = e.target.value; draw(); });
+document.getElementById('line').addEventListener('input', e => { params.line = e.target.value; draw(); });
+document.getElementById('lineHi').addEventListener('input', e => { params.lineHi = e.target.value; draw(); });
+
+document.getElementById('clear').addEventListener('click', () => {
+  sources = [];
+  updateSrcCount();
+  rebuild();
+});
+
+document.getElementById('reseed').addEventListener('click', () => {
+  const s = Math.floor(Math.random() * 999) + 1;
+  params.seed = s;
+  document.getElementById('seed').value = s;
+  document.getElementById('seedV').textContent = s;
+  noise.setSeed(s);
+  rebuild();
+});
+
+document.getElementById('export').addEventListener('click', () => {
+  // Re-render without source markers for export
+  const wasShowing = params.showPts;
+  params.showPts = false;
+  draw();
+  const link = document.createElement('a');
+  link.download = `topography-${Date.now()}.png`;
+  link.href = canvas.toDataURL('image/png');
+  link.click();
+  params.showPts = wasShowing;
+  draw();
+});
+
+document.getElementById('exportSVG').addEventListener('click', exportSVG);
+
+function exportSVG() {
+  const w = canvas.width / dpr;
+  const h = canvas.height / dpr;
+  const { levels, mn, mx } = levelList();
+  const baseCol = hexToRgb(params.line);
+  const hiCol = hexToRgb(params.lineHi);
+
+  let svg = `<svg xmlns="http://www.w3.org/2000/svg" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}">`;
+  svg += `<rect width="${w}" height="${h}" fill="${params.bg}"/>`;
+  svg += `<g fill="none" stroke-width="${params.lineWidth}" stroke-linecap="round" stroke-linejoin="round">`;
+
+  for (const level of levels) {
+    let color = params.line;
+    if (params.elev) {
+      const t = (level - mn) / (mx - mn);
+      const c = mix(baseCol, hiCol, Math.max(0, Math.min(1, t)));
+      color = rgbStr(c[0], c[1], c[2]);
+    }
+    let d = '';
+    forEachContourSegment(level, (x1, y1, x2, y2) => {
+      d += `M${(x1/dpr).toFixed(2)} ${(y1/dpr).toFixed(2)}L${(x2/dpr).toFixed(2)} ${(y2/dpr).toFixed(2)}`;
+    });
+    if (d) svg += `<path d="${d}" stroke="${color}"/>`;
+  }
+  svg += `</g></svg>`;
+
+  const blob = new Blob([svg], { type: 'image/svg+xml' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.download = `topography-${Date.now()}.svg`;
+  link.href = url;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 200);
+}
+
+// ---------- Animation loop ----------
+function animationActive() {
+  return anim.drift || anim.evolve || anim.flow || anim.pulse;
+}
+
+function tick(now) {
+  anim.rafId = 0;
+  if (!anim.playing) return;
+  const dt = anim.lastFrame ? Math.min(0.066, (now - anim.lastFrame) / 1000) : 0.016;
+  anim.lastFrame = now;
+  anim.t += dt * anim.speed;
+
+  if (anim.drift || anim.evolve || anim.pulse) {
+    rebuild();
+  } else if (anim.flow) {
+    draw();
+  }
+  anim.rafId = requestAnimationFrame(tick);
+}
+
+function startAnim() {
+  if (anim.playing) return;
+  anim.playing = true;
+  anim.lastFrame = 0;
+  document.getElementById('playPause').textContent = 'Pause';
+  if (!anim.rafId) anim.rafId = requestAnimationFrame(tick);
+}
+function stopAnim() {
+  anim.playing = false;
+  if (anim.rafId) cancelAnimationFrame(anim.rafId);
+  anim.rafId = 0;
+  document.getElementById('playPause').textContent = 'Play';
+}
+
+function bindAnimToggle(id, key) {
+  document.getElementById(id).addEventListener('change', e => {
+    anim[key] = e.target.checked;
+    if (animationActive() && !anim.playing) startAnim();
+    if (!animationActive()) stopAnim();
+  });
+}
+bindAnimToggle('aDrift',  'drift');
+bindAnimToggle('aEvolve', 'evolve');
+bindAnimToggle('aFlow',   'flow');
+bindAnimToggle('aPulse',  'pulse');
+
+document.getElementById('aSpeed').addEventListener('input', e => {
+  anim.speed = parseFloat(e.target.value);
+  document.getElementById('aSpeedV').textContent = anim.speed.toFixed(2);
+});
+
+document.getElementById('playPause').addEventListener('click', () => {
+  if (!animationActive()) {
+    // Auto-enable drift if user hits play with nothing selected
+    document.getElementById('aDrift').checked = true;
+    anim.drift = true;
+  }
+  if (anim.playing) stopAnim();
+  else startAnim();
+});
+
+window.addEventListener('keydown', (e) => {
+  if (e.target.tagName === 'INPUT') return;
+  if (e.key === 'r' || e.key === 'R') document.getElementById('reseed').click();
+  else if (e.key === 'c' || e.key === 'C') document.getElementById('clear').click();
+  else if (e.key === 's' || e.key === 'S') document.getElementById('export').click();
+  else if (e.key === 'v' || e.key === 'V') document.getElementById('exportSVG').click();
+  else if (e.key === ' ') { e.preventDefault(); document.getElementById('playPause').click(); }
+});
+
+window.addEventListener('resize', resize);
+
+// ---------- Init ----------
+resize();
+</script>
+</body>
+</html>
